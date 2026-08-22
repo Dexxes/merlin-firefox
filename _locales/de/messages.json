@@ -1,0 +1,384 @@
+{
+  "actionTitle": {
+    "message": "Merlin-Einstellungen"
+  },
+  "contextMenu_saveLink": {
+    "message": "Link speichern"
+  },
+  "contextMenu_saveLinkWithTags": {
+    "message": "Link mit Tags speichern…"
+  },
+  "contextMenu_saveMail": {
+    "message": "Mail an Merlin senden"
+  },
+  "contextMenu_savePage": {
+    "message": "HTML an Merlin senden"
+  },
+  "contextMenu_savePageWithTags": {
+    "message": "Seite mit Tags speichern…"
+  },
+  "contextMenu_sendLink": {
+    "message": "Link an Merlin senden"
+  },
+  "extDescription": {
+    "message": "Speichere jeden Link mit einem einzigen Rechtsklick in deiner Merlin-App."
+  },
+  "extName": {
+    "message": "Merlin"
+  },
+  "flyout_addedToReadingList": {
+    "message": "Zur Leseliste hinzugefügt."
+  },
+  "flyout_articleAdded": {
+    "message": "Artikel gespeichert"
+  },
+  "flyout_articleAddedWithTags": {
+    "message": "Artikel gespeichert mit [$tags$]",
+    "placeholders": {
+      "tags": {
+        "content": "$1"
+      }
+    }
+  },
+  "flyout_authFailed": {
+    "message": "Authentifizierung fehlgeschlagen — App-Passwort prüfen."
+  },
+  "flyout_connectionFailed": {
+    "message": "Verbindung fehlgeschlagen: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "flyout_saving": {
+    "message": "Wird an Merlin geschickt…"
+  },
+  "flyout_serverError": {
+    "message": "Serverfehler: HTTP $code$",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "notification_authFailedMessage": {
+    "message": "Merlin: Anmeldung fehlgeschlagen – bitte erneut einloggen"
+  },
+  "notification_authFailedTitle": {
+    "message": "Merlin: Anmeldung fehlgeschlagen"
+  },
+  "notification_configureCredentials": {
+    "message": "Bitte zuerst Nextcloud-Zugangsdaten konfigurieren."
+  },
+  "notification_defaultTitle": {
+    "message": "Merlin"
+  },
+  "notification_errorTitle": {
+    "message": "Fehler"
+  },
+  "notification_loadingTitle": {
+    "message": "Merlin…"
+  },
+  "notification_needsPermission": {
+    "message": "Merlin braucht eine Berechtigung für diesen Server — bitte in den Einstellungen erneut einloggen."
+  },
+  "notification_savedTitle": {
+    "message": "Merlin"
+  },
+  "options_cancelLogin": {
+    "message": "Anmeldung abbrechen…"
+  },
+  "options_cannotOpenLogin": {
+    "message": "Anmeldeseite konnte nicht geöffnet werden: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_cannotReach": {
+    "message": "Nextcloud nicht erreichbar: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_cannotStartPolling": {
+    "message": "Hintergrund-Abfrage konnte nicht gestartet werden: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_closeTab": {
+    "message": "Tab schließen"
+  },
+  "options_completeLogin": {
+    "message": "Schließe die Nextcloud-Anmeldung im neuen Tab ab…"
+  },
+  "options_connecting": {
+    "message": "Verbinde mit Nextcloud…"
+  },
+  "options_connectingShort": {
+    "message": "Verbinde…"
+  },
+  "options_couldNotSave": {
+    "message": "Konnte nicht gespeichert werden: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_disconnected": {
+    "message": "Verbindung getrennt. Bitte erneut einloggen."
+  },
+  "options_enterUrlFirst": {
+    "message": "Bitte zuerst deine Nextcloud-URL eingeben."
+  },
+  "options_enterUrlPlain": {
+    "message": "Bitte gib deine Nextcloud-URL ein."
+  },
+  "options_headerSubtitle": {
+    "message": "Nextcloud-Add-on-Einstellungen"
+  },
+  "options_headerSubtitleExtension": {
+    "message": "Nextcloud-Erweiterungs-Einstellungen"
+  },
+  "options_httpWarning": {
+    "message": "Achtung: Diese URL nutzt http:// — dein App-Passwort wird unverschlüsselt übertragen. Nutze wenn möglich https://."
+  },
+  "options_loggedInAs": {
+    "message": "Angemeldet als $name$. Einstellungen gespeichert.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_loggedOut": {
+    "message": "Abgemeldet. Zugangsdaten von diesem Gerät entfernt."
+  },
+  "options_loggedOutWelcome": {
+    "message": "Abgemeldet. Gib deine Nextcloud-URL ein und klicke auf „Mit Nextcloud anmelden“, um loszulegen."
+  },
+  "options_loginButton": {
+    "message": "Mit Nextcloud anmelden"
+  },
+  "options_loginButtonStandalone": {
+    "message": "Anmelden"
+  },
+  "options_loginCancelled": {
+    "message": "Anmeldung abgebrochen."
+  },
+  "options_loginFirst": {
+    "message": "Bitte zuerst mit Nextcloud anmelden."
+  },
+  "options_loginTimeout": {
+    "message": "Anmeldung nach 5 Minuten abgelaufen. Bitte erneut versuchen."
+  },
+  "options_logoutButton": {
+    "message": "Verbindung trennen"
+  },
+  "options_logoutButtonShort": {
+    "message": "Abmelden"
+  },
+  "options_needsPermission": {
+    "message": "Merlin braucht die Berechtigung für den Zugriff auf diesen Server, um fortzufahren."
+  },
+  "options_pageTitle": {
+    "message": "Merlin — Add-on-Einstellungen"
+  },
+  "options_pageTitleExtension": {
+    "message": "Merlin — Erweiterungs-Einstellungen"
+  },
+  "options_saveSettingsButton": {
+    "message": "Einstellungen speichern"
+  },
+  "options_securityEnterUrl": {
+    "message": "Gib zuerst deine Nextcloud-URL ein."
+  },
+  "options_securityHint": {
+    "message": "App-Passwörter in Nextcloud verwalten →"
+  },
+  "options_securityLink": {
+    "message": "Einstellungen → Sicherheit → App-Passwörter"
+  },
+  "options_testAuthFailed": {
+    "message": "Authentifizierung fehlgeschlagen. Bitte erneut über „Mit Nextcloud anmelden“ einloggen."
+  },
+  "options_testButton": {
+    "message": "Verbindung testen"
+  },
+  "options_testFailed": {
+    "message": "Verbindung fehlgeschlagen: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_testNotFound": {
+    "message": "Merlin-App nicht gefunden. Ist sie installiert und die URL korrekt?"
+  },
+  "options_testServerError": {
+    "message": "Server hat HTTP $code$ zurückgegeben.",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_testSuccess": {
+    "message": "Verbindung erfolgreich! Die Merlin-App ist erreichbar."
+  },
+  "options_testTimeout": {
+    "message": "Zeitüberschreitung der Verbindung. Prüfe die URL und dein Netzwerk."
+  },
+  "options_testing": {
+    "message": "Teste…"
+  },
+  "options_urlHint": {
+    "message": "Die Basis-URL deiner Nextcloud-Instanz — HTTPS ist erforderlich und wird automatisch ergänzt (kein abschließender Schrägstrich nötig)"
+  },
+  "options_urlHintShort": {
+    "message": "Die Basis-URL deiner Nextcloud-Instanz (kein abschließender Schrägstrich nötig)"
+  },
+  "options_urlLabel": {
+    "message": "Nextcloud-URL"
+  },
+  "options_urlPlaceholder": {
+    "message": "cloud.beispiel.de"
+  },
+  "options_urlPlaceholderFull": {
+    "message": "https://cloud.beispiel.de"
+  },
+  "options_urlSaved": {
+    "message": "URL gespeichert. Nutze „Mit Nextcloud anmelden“, um dich zu authentifizieren."
+  },
+  "options_welcome": {
+    "message": "Willkommen! Gib deine Nextcloud-URL ein und klicke auf „Mit Nextcloud anmelden“, um loszulegen."
+  },
+  "passphrase_activeHint": {
+    "message": "Verschlüsselter Sync ist aktiv."
+  },
+  "passphrase_applyButton": {
+    "message": "Anwenden"
+  },
+  "passphrase_changeButton": {
+    "message": "Passphrase ändern"
+  },
+  "passphrase_enableButton": {
+    "message": "Verschlüsselten Sync aktivieren"
+  },
+  "passphrase_enableError": {
+    "message": "Sync konnte nicht aktiviert werden: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "passphrase_enableHint": {
+    "message": "Lege eine Passphrase fest, damit dein Login (verschlüsselt) zwischen deinen Geräten synchronisiert wird."
+  },
+  "passphrase_enabled": {
+    "message": "Verschlüsselter Sync ist jetzt aktiv."
+  },
+  "passphrase_enterPassphrase": {
+    "message": "Bitte gib die Passphrase ein."
+  },
+  "passphrase_label": {
+    "message": "Verschlüsselungs-Passphrase"
+  },
+  "passphrase_loginFirst": {
+    "message": "Bitte zuerst anmelden."
+  },
+  "passphrase_noSyncedLogin": {
+    "message": "Kein synchronisierter Login gefunden."
+  },
+  "passphrase_placeholder": {
+    "message": "Passphrase"
+  },
+  "passphrase_setPlaceholder": {
+    "message": "•••••••• (gesetzt — neue eingeben zum Ändern)"
+  },
+  "passphrase_syncUnavailable": {
+    "message": "Sync nicht verfügbar: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "passphrase_tooShort": {
+    "message": "Bitte gib eine Passphrase mit mindestens 8 Zeichen ein."
+  },
+  "passphrase_unlockButton": {
+    "message": "Entsperren"
+  },
+  "passphrase_unlockHint": {
+    "message": "Über Sync wurde ein verschlüsselter Login gefunden. Gib die Passphrase ein, um ihn auf diesem Gerät zu nutzen."
+  },
+  "passphrase_unlockedAs": {
+    "message": "Entsperrt als $name$.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "passphrase_wrongPassphrase": {
+    "message": "Falsche Passphrase oder die synchronisierten Daten sind beschädigt."
+  },
+  "saveDialog_authFailed": {
+    "message": "Anmeldung fehlgeschlagen — bitte erneut einloggen"
+  },
+  "saveDialog_cancel": {
+    "message": "Abbrechen"
+  },
+  "saveDialog_existingTags": {
+    "message": "Vorhandene Tags"
+  },
+  "saveDialog_noCredentials": {
+    "message": "Keine Zugangsdaten verfügbar"
+  },
+  "saveDialog_noTags": {
+    "message": "Noch keine Tags vorhanden"
+  },
+  "saveDialog_optional": {
+    "message": "(optional)"
+  },
+  "saveDialog_pageTitle": {
+    "message": "Merlin — Artikel speichern"
+  },
+  "saveDialog_save": {
+    "message": "Speichern"
+  },
+  "saveDialog_subtitle": {
+    "message": "Artikel zur Leseliste hinzufügen"
+  },
+  "saveDialog_tagsHint": {
+    "message": "Mehrere Tags mit Komma trennen"
+  },
+  "saveDialog_tagsLabel": {
+    "message": "Tags"
+  },
+  "saveDialog_tagsLoadError": {
+    "message": "Tags konnten nicht geladen werden (HTTP $code$)",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "saveDialog_tagsPlaceholder": {
+    "message": "z.B. tech, news, lesen"
+  },
+  "saveDialog_tagsTimeout": {
+    "message": "Zeitüberschreitung beim Laden der Tags"
+  }
+}

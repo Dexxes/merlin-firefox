@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en" data-i18n-title="options_pageTitleExtension">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merlin — Extension Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                   'Helvetica Neue', Arial, sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px 64px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.09);
+      padding: 36px 40px 40px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .header img {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .header-text h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0082c9;
+      line-height: 1.2;
+    }
+
+    /* Form fields */
+    .field {
+      margin-bottom: 22px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      border: 1.5px solid #dde1e7;
+      border-radius: 9px;
+      background: #f8f9fa;
+      color: #222;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus {
+      border-color: #0082c9;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(0, 130, 201, 0.12);
+    }
+    .field .hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+      line-height: 1.5;
+    }
+
+    /* Nextcloud Login Flow button */
+    .btn-login {
+      width: 100%;
+      justify-content: center;
+      background: #0082c9;
+      color: #fff;
+      font-size: 15px;
+      padding: 12px 20px;
+      margin-top: 4px;
+    }
+    .btn-login:not(:disabled):hover {
+      background: #006fab;
+      box-shadow: 0 2px 8px rgba(0, 130, 201, 0.3);
+    }
+
+    /* Test connection link */
+    .btn-test-link {
+      display: block;
+      text-align: center;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #999;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
+      transition: color 0.15s;
+    }
+    .btn-test-link:hover { color: #0082c9; }
+
+    .divider {
+      height: 1px;
+      background: #eaecef;
+      margin: 22px 0;
+    }
+
+    /* Buttons */
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.55; cursor: default; }
+    .btn-primary {
+      background: #0082c9;
+      color: #fff;
+      flex: 1;
+      justify-content: center;
+    }
+    .btn-primary:not(:disabled):hover {
+      background: #006fab;
+      box-shadow: 0 2px 8px rgba(0, 130, 201, 0.3);
+    }
+    .btn-secondary {
+      background: #eef0f3;
+      color: #444;
+    }
+    .btn-secondary:not(:disabled):hover { background: #e0e3e8; }
+
+    /* Status message */
+    .status {
+      margin-top: 18px;
+      padding: 11px 15px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      line-height: 1.4;
+    }
+    .status.visible { display: flex; }
+    .status.success {
+      background: #e8f5e9;
+      color: #256029;
+      border: 1px solid #c8e6c9;
+    }
+    .status.error {
+      background: #fdecea;
+      color: #9b1c1c;
+      border: 1px solid #f5c6c3;
+    }
+    .status.info {
+      background: #e3f2fd;
+      color: #0d47a1;
+      border: 1px solid #bbdefb;
+    }
+    .status-icon { font-size: 16px; flex-shrink: 0; }
+
+    .btn-close-tab {
+      margin-left: auto;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #256029;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .btn-close-tab:hover { background: #1b4520; }
+
+    /* Backend type selector */
+    .backend-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .backend-toggle label {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      background: #f8f9fa;
+      border: 1.5px solid #dde1e7;
+      border-radius: 9px;
+      cursor: pointer;
+    }
+    .backend-toggle input { width: auto; margin: 0; }
+    .backend-toggle input:checked + span { color: #0082c9; }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- Header -->
+    <div class="header">
+      <img src="icons/icon-128.png" alt="Merlin icon">
+      <div class="header-text">
+        <h1>Merlin</h1>
+      </div>
+    </div>
+
+    <!-- Backend type -->
+    <div class="backend-toggle">
+      <label>
+        <input type="radio" name="backendKind" id="backendKindNextcloud" value="nextcloud" checked>
+        <span>Nextcloud</span>
+      </label>
+      <label>
+        <input type="radio" name="backendKind" id="backendKindStandalone" value="standalone">
+        <span>Standalone-Server</span>
+      </label>
+    </div>
+
+    <!-- Nextcloud URL -->
+    <div class="field">
+      <label for="nextcloudUrl" data-i18n="options_urlLabel">Nextcloud URL</label>
+      <input
+        type="url"
+        id="nextcloudUrl"
+        placeholder="https://cloud.example.com"
+        data-i18n-placeholder="options_urlPlaceholderFull"
+        autocomplete="off"
+        spellcheck="false">
+      <p class="hint" data-i18n="options_urlHintShort">The base URL of your Nextcloud instance (no trailing slash needed)</p>
+    </div>
+
+    <!-- Nextcloud Login Flow -->
+    <button class="btn btn-login" id="loginFlowBtn" type="button">
+      <span data-i18n="options_loginButton">Login with Nextcloud</span>
+    </button>
+
+    <!-- Action buttons -->
+    <div class="actions" style="margin-top: 16px;">
+      <button class="btn btn-primary" id="saveBtn" type="button">
+        <span data-i18n="options_saveSettingsButton">Save settings</span>
+      </button>
+    </div>
+    <button class="btn-test-link" id="logoutBtn" type="button" style="display: none;">
+      <span data-i18n="options_logoutButtonShort">Log out</span>
+    </button>
+
+    <!-- Status message -->
+    <div id="status" class="status" role="alert" aria-live="polite">
+      <span class="status-icon" id="statusIcon"></span>
+      <span id="statusText"></span>
+    </div>
+
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

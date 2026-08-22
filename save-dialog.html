@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-i18n-title="saveDialog_pageTitle">
+<head>
+  <meta charset="UTF-8">
+  <title>Merlin — Save article</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                   'Helvetica Neue', Arial, sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.10);
+      padding: 22px 24px 20px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .header img {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0082c9;
+    }
+    .header p {
+      font-size: 11px;
+      color: #999;
+      margin-top: 1px;
+    }
+
+    /* URL display */
+    .url-row {
+      background: #f4f6f9;
+      border-radius: 8px;
+      padding: 8px 11px;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Tag input field */
+    .field {
+      margin-bottom: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 5px;
+    }
+    .field input {
+      width: 100%;
+      padding: 9px 12px;
+      font-size: 13px;
+      border: 1.5px solid #dde1e7;
+      border-radius: 8px;
+      background: #f8f9fa;
+      color: #222;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus {
+      border-color: #0082c9;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(0, 130, 201, 0.12);
+    }
+    .field .hint {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    /* Existing tag suggestions */
+    .tags-section {
+      margin-bottom: 16px;
+    }
+    .tags-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tags-spinner {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid #ccc;
+      border-top-color: #0082c9;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .tag-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 28px;
+    }
+    .tag-chip {
+      padding: 4px 11px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid #dde1e7;
+      background: #f4f6f9;
+      color: #555;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .tag-chip:hover {
+      border-color: #0082c9;
+      color: #0082c9;
+      background: #e8f3fb;
+    }
+    .tag-chip.selected {
+      background: #0082c9;
+      border-color: #0082c9;
+      color: #fff;
+    }
+    .tag-chip.selected:hover {
+      background: #006fab;
+      border-color: #006fab;
+      color: #fff;
+    }
+    .tags-empty {
+      font-size: 12px;
+      color: #bbb;
+      font-style: italic;
+    }
+    .tags-error {
+      font-size: 11px;
+      color: #c0392b;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: #eaecef;
+      margin: 16px 0;
+    }
+
+    /* Buttons */
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      flex: 1;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .btn-cancel {
+      background: #eef0f3;
+      color: #555;
+    }
+    .btn-cancel:hover { background: #e0e3e8; }
+    .btn-save {
+      background: #0082c9;
+      color: #fff;
+    }
+    .btn-save:hover {
+      background: #006fab;
+      box-shadow: 0 2px 8px rgba(0, 130, 201, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <div class="header">
+      <img src="icons/icon-128.png" alt="Merlin">
+      <div>
+        <h1>Merlin</h1>
+        <p data-i18n="saveDialog_subtitle">Add article to reading list</p>
+      </div>
+    </div>
+
+    <div class="url-row" id="urlDisplay" title=""></div>
+
+    <!-- Tag input -->
+    <div class="field">
+      <label for="tagsInput"><span data-i18n="saveDialog_tagsLabel">Tags</span> <span style="font-weight:400;color:#aaa" data-i18n="saveDialog_optional">(optional)</span></label>
+      <input
+        type="text"
+        id="tagsInput"
+        placeholder="e.g. tech, news, reading"
+        data-i18n-placeholder="saveDialog_tagsPlaceholder"
+        autocomplete="off"
+        spellcheck="false">
+      <p class="hint" data-i18n="saveDialog_tagsHint">Separate multiple tags with commas</p>
+    </div>
+
+    <!-- Existing tag suggestions -->
+    <div class="tags-section" id="tagsSection">
+      <div class="tags-section-label">
+        <span data-i18n="saveDialog_existingTags">Existing tags</span>
+        <span class="tags-spinner" id="tagsSpinner"></span>
+      </div>
+      <div class="tag-chips" id="tagChips"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="actions">
+      <button class="btn btn-cancel" id="cancelBtn" type="button" data-i18n="saveDialog_cancel">Cancel</button>
+      <button class="btn btn-save"   id="saveBtn"   type="button" data-i18n="saveDialog_save">Save</button>
+    </div>
+
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="save-dialog.js"></script>
+</body>
+</html>
