@@ -4,7 +4,7 @@ All notable changes to Merlin for Firefox are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning based on
 [SemVer](https://semver.org/).
 
-## [1.1.0] - 2026-08-23
+## [1.2.0] - 2026-08-23
 
 ### Added
 - Save link / save page **with tags** from the context menu, opening a small dialog
