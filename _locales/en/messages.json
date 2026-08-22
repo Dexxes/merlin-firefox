@@ -148,9 +148,6 @@
   "options_headerSubtitleExtension": {
     "message": "Nextcloud Extension Settings"
   },
-  "options_httpWarning": {
-    "message": "Warning: this URL uses http:// — your app password will be sent unencrypted. Use https:// if possible."
-  },
   "options_loggedInAs": {
     "message": "Logged in as $name$. Settings saved.",
     "placeholders": {
@@ -244,17 +241,11 @@
   "options_urlHint": {
     "message": "The base URL of your Nextcloud instance — HTTPS is required and added automatically (no trailing slash needed)"
   },
-  "options_urlHintShort": {
-    "message": "The base URL of your Nextcloud instance — https:// is added automatically if omitted (no trailing slash needed)"
-  },
   "options_urlLabel": {
     "message": "Nextcloud URL"
   },
   "options_urlPlaceholder": {
     "message": "cloud.example.com"
-  },
-  "options_urlPlaceholderFull": {
-    "message": "https://cloud.example.com"
   },
   "options_urlSaved": {
     "message": "URL saved. Use \"Login with Nextcloud\" to authenticate."

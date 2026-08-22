@@ -4,21 +4,26 @@
 
 const $ = id => document.getElementById(id);
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 // i18n-Kürzel: liest lokalisierte Strings aus _locales/<lang>/messages.json
 // (generiert via tools/i18n/export.py). `subs` mappt auf die $1/$2-Platzhalter.
 const t = (key, subs) => browser.i18n.getMessage(key, subs);
 
-// Fehlt das Protokoll, wird https:// automatisch vorangestellt (wie bei
-// Merlin-Thunderbird). http:// bleibt möglich, wenn explizit eingetippt —
-// z. B. für einen lokalen Standalone-Server.
-function normalizeNextcloudUrl(raw) {
-  const trimmed = (raw || '').trim().replace(/\/+$/, '');
-  if (!trimmed) return '';
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+// ─── Nextcloud URL — HTTPS erzwungen ────────────────────────────────────────
+// Das Eingabefeld zeigt nur noch den Host/Pfad an; "https://" steht als
+// fixes Präfix davor (siehe options.html, .url-prefix) und ist dem Nutzer so
+// gar nicht erst eintippbar. Falls trotzdem ein Protokoll mit eingefügt
+// wird (z. B. per Copy-Paste einer vollen URL), wird es hier entfernt.
+function stripProtocol(value) {
+  return (value || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+}
+
+function getFullNextcloudUrl() {
+  const cleaned = stripProtocol($('nextcloudUrl').value);
+  return cleaned ? `https://${cleaned}` : '';
+}
+
+function setNextcloudUrlInput(fullUrl) {
+  $('nextcloudUrl').value = stripProtocol(fullUrl);
 }
 
 function showCloseButton() {
@@ -150,13 +155,12 @@ async function startLoginFlow() {
   // Toggle: clicking the button again cancels an in-progress flow
   if (_lfActive) { cancelLoginFlow(); return; }
 
-  const url = normalizeNextcloudUrl($('nextcloudUrl').value);
+  const url = getFullNextcloudUrl();
   if (!url) {
     showStatus(t('options_enterUrlFirst'), 'error');
     $('nextcloudUrl').focus();
     return;
   }
-  $('nextcloudUrl').value = url;
 
   const backendKind = selectedBackendKind();
 
@@ -170,14 +174,6 @@ async function startLoginFlow() {
     _lfReset();
     showStatus(t('options_needsPermission'), 'error');
     return;
-  }
-
-  // Nicht blockierend: Basic-Auth-Zugangsdaten würden über http:// im Klartext
-  // übertragen — kurz warnen, aber den Login-Flow trotzdem fortsetzen (der
-  // Nutzer hat die URL bewusst so eingegeben, z. B. für einen lokalen Server).
-  if (url.startsWith('http://')) {
-    showStatus(t('options_httpWarning'), 'error', 4000);
-    await sleep(1500);
   }
 
   showStatus(t('options_connecting'), 'info', 0);
@@ -256,7 +252,7 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 
   if (result.success) {
-    $('nextcloudUrl').value = result.serverUrl;
+    setNextcloudUrlInput(result.serverUrl);
     showStatus(t('options_loggedInAs', [result.loginName]), 'success', 0);
     showCloseButton();
     updateLogoutButton(true);
@@ -268,7 +264,7 @@ browser.storage.onChanged.addListener((changes, area) => {
 async function loadSettings() {
   const { nextcloudUrl, username, appPassword, backendKind } = await getCredentials();
 
-  if (nextcloudUrl) $('nextcloudUrl').value = nextcloudUrl;
+  if (nextcloudUrl) setNextcloudUrlInput(nextcloudUrl);
   const radio = document.querySelector(`input[name="backendKind"][value="${backendKind === 'standalone' ? 'standalone' : 'nextcloud'}"]`);
   if (radio) radio.checked = true;
   updateLoginButtonLabel();
@@ -292,17 +288,11 @@ async function loadSettings() {
 // ─── Save settings (URL only, before login) ──────────────────────────────────
 
 async function saveSettings() {
-  const url = normalizeNextcloudUrl($('nextcloudUrl').value);
+  const url = getFullNextcloudUrl();
 
   if (!url) {
     showStatus(t('options_enterUrlPlain'), 'error');
     return;
-  }
-  $('nextcloudUrl').value = url;
-
-  if (url.startsWith('http://')) {
-    showStatus(t('options_httpWarning'), 'error', 4000);
-    await sleep(1500);
   }
 
   try {
@@ -351,11 +341,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('input[name="backendKind"]').forEach(radio => {
     radio.addEventListener('change', updateLoginButtonLabel);
-  });
-
-  // https:// beim Verlassen des Feldes sichtbar ergänzen, ohne bereits
-  // beim Tippen einzugreifen.
-  $('nextcloudUrl').addEventListener('blur', e => {
-    e.target.value = normalizeNextcloudUrl(e.target.value);
   });
 });

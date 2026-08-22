@@ -83,6 +83,45 @@
       line-height: 1.5;
     }
 
+    /* URL-Eingabe mit fest sichtbarem https://-Präfix — http wird nicht
+       mehr unterstützt, daher kann der Nutzer es gar nicht erst eintippen. */
+    .url-input-group {
+      display: flex;
+      align-items: stretch;
+      border: 1.5px solid #dde1e7;
+      border-radius: 9px;
+      background: #f8f9fa;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      overflow: hidden;
+    }
+    .url-input-group:focus-within {
+      border-color: #0082c9;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(0, 130, 201, 0.12);
+    }
+    .url-prefix {
+      display: flex;
+      align-items: center;
+      padding: 10px 0 10px 14px;
+      font-size: 14px;
+      color: #888;
+      background: transparent;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .url-input-group input {
+      flex: 1;
+      width: auto;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      padding: 10px 14px 10px 4px;
+    }
+    .url-input-group input:focus {
+      box-shadow: none;
+      background: transparent;
+    }
+
     /* Nextcloud Login Flow button */
     .btn-login {
       width: 100%;
@@ -251,14 +290,17 @@
     <!-- Nextcloud URL -->
     <div class="field">
       <label for="nextcloudUrl" data-i18n="options_urlLabel">Nextcloud URL</label>
-      <input
-        type="url"
-        id="nextcloudUrl"
-        placeholder="https://cloud.example.com"
-        data-i18n-placeholder="options_urlPlaceholderFull"
-        autocomplete="off"
-        spellcheck="false">
-      <p class="hint" data-i18n="options_urlHintShort">The base URL of your Nextcloud instance (no trailing slash needed)</p>
+      <div class="url-input-group">
+        <span class="url-prefix" aria-hidden="true">https://</span>
+        <input
+          type="text"
+          id="nextcloudUrl"
+          placeholder="cloud.example.com"
+          data-i18n-placeholder="options_urlPlaceholder"
+          autocomplete="off"
+          spellcheck="false">
+      </div>
+      <p class="hint" data-i18n="options_urlHint">The base URL of your Nextcloud instance — HTTPS is required and added automatically (no trailing slash needed)</p>
     </div>
 
     <!-- Nextcloud Login Flow -->

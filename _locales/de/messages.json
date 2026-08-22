@@ -148,9 +148,6 @@
   "options_headerSubtitleExtension": {
     "message": "Nextcloud-Erweiterungs-Einstellungen"
   },
-  "options_httpWarning": {
-    "message": "Achtung: Diese URL nutzt http:// — dein App-Passwort wird unverschlüsselt übertragen. Nutze wenn möglich https://."
-  },
   "options_loggedInAs": {
     "message": "Angemeldet als $name$. Einstellungen gespeichert.",
     "placeholders": {
@@ -244,17 +241,11 @@
   "options_urlHint": {
     "message": "Die Basis-URL deiner Nextcloud-Instanz — HTTPS ist erforderlich und wird automatisch ergänzt (kein abschließender Schrägstrich nötig)"
   },
-  "options_urlHintShort": {
-    "message": "Die Basis-URL deiner Nextcloud-Instanz — https:// wird automatisch ergänzt, falls nicht angegeben (kein abschließender Schrägstrich nötig)"
-  },
   "options_urlLabel": {
     "message": "Nextcloud-URL"
   },
   "options_urlPlaceholder": {
     "message": "cloud.beispiel.de"
-  },
-  "options_urlPlaceholderFull": {
-    "message": "https://cloud.beispiel.de"
   },
   "options_urlSaved": {
     "message": "URL gespeichert. Nutze „Mit Nextcloud anmelden“, um dich zu authentifizieren."
