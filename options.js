@@ -12,6 +12,15 @@ function sleep(ms) {
 // (generiert via tools/i18n/export.py). `subs` mappt auf die $1/$2-Platzhalter.
 const t = (key, subs) => browser.i18n.getMessage(key, subs);
 
+// Fehlt das Protokoll, wird https:// automatisch vorangestellt (wie bei
+// Merlin-Thunderbird). http:// bleibt möglich, wenn explizit eingetippt —
+// z. B. für einen lokalen Standalone-Server.
+function normalizeNextcloudUrl(raw) {
+  const trimmed = (raw || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return '';
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 function showCloseButton() {
   const existing = $('closeTabBtn');
   if (existing) { existing.style.display = 'inline-flex'; return; }
@@ -141,12 +150,13 @@ async function startLoginFlow() {
   // Toggle: clicking the button again cancels an in-progress flow
   if (_lfActive) { cancelLoginFlow(); return; }
 
-  const url = $('nextcloudUrl').value.trim().replace(/\/$/, '');
+  const url = normalizeNextcloudUrl($('nextcloudUrl').value);
   if (!url) {
     showStatus(t('options_enterUrlFirst'), 'error');
     $('nextcloudUrl').focus();
     return;
   }
+  $('nextcloudUrl').value = url;
 
   const backendKind = selectedBackendKind();
 
@@ -282,12 +292,13 @@ async function loadSettings() {
 // ─── Save settings (URL only, before login) ──────────────────────────────────
 
 async function saveSettings() {
-  const url = $('nextcloudUrl').value.trim().replace(/\/$/, '');
+  const url = normalizeNextcloudUrl($('nextcloudUrl').value);
 
   if (!url) {
     showStatus(t('options_enterUrlPlain'), 'error');
     return;
   }
+  $('nextcloudUrl').value = url;
 
   if (url.startsWith('http://')) {
     showStatus(t('options_httpWarning'), 'error', 4000);
@@ -340,5 +351,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('input[name="backendKind"]').forEach(radio => {
     radio.addEventListener('change', updateLoginButtonLabel);
+  });
+
+  // https:// beim Verlassen des Feldes sichtbar ergänzen, ohne bereits
+  // beim Tippen einzugreifen.
+  $('nextcloudUrl').addEventListener('blur', e => {
+    e.target.value = normalizeNextcloudUrl(e.target.value);
   });
 });

@@ -245,7 +245,7 @@
     "message": "Die Basis-URL deiner Nextcloud-Instanz — HTTPS ist erforderlich und wird automatisch ergänzt (kein abschließender Schrägstrich nötig)"
   },
   "options_urlHintShort": {
-    "message": "Die Basis-URL deiner Nextcloud-Instanz (kein abschließender Schrägstrich nötig)"
+    "message": "Die Basis-URL deiner Nextcloud-Instanz — https:// wird automatisch ergänzt, falls nicht angegeben (kein abschließender Schrägstrich nötig)"
   },
   "options_urlLabel": {
     "message": "Nextcloud-URL"

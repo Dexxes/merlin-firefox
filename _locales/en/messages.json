@@ -245,7 +245,7 @@
     "message": "The base URL of your Nextcloud instance — HTTPS is required and added automatically (no trailing slash needed)"
   },
   "options_urlHintShort": {
-    "message": "The base URL of your Nextcloud instance (no trailing slash needed)"
+    "message": "The base URL of your Nextcloud instance — https:// is added automatically if omitted (no trailing slash needed)"
   },
   "options_urlLabel": {
     "message": "Nextcloud URL"
