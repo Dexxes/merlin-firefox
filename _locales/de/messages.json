@@ -62,6 +62,14 @@
       }
     }
   },
+  "flyout_unsupportedSite": {
+    "message": "Nicht unterstützt: $domain$ liefert keinen lesbaren Artikeltext.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "notification_authFailedMessage": {
     "message": "Merlin: Anmeldung fehlgeschlagen – bitte erneut einloggen"
   },
@@ -69,7 +77,7 @@
     "message": "Merlin: Anmeldung fehlgeschlagen"
   },
   "notification_configureCredentials": {
-    "message": "Bitte zuerst Nextcloud-Zugangsdaten konfigurieren."
+    "message": "Bitte zuerst Zugangsdaten konfigurieren."
   },
   "notification_defaultTitle": {
     "message": "Merlin"
@@ -85,6 +93,14 @@
   },
   "notification_savedTitle": {
     "message": "Merlin"
+  },
+  "notification_unsupportedSiteMessage": {
+    "message": "Merlin: Diese Seite wird nicht unterstützt ($domain$)",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "options_cancelLogin": {
     "message": "Anmeldung abbrechen…"
@@ -143,7 +159,7 @@
     "message": "Bitte gib deine Nextcloud-URL ein."
   },
   "options_headerSubtitle": {
-    "message": "Nextcloud-Add-on-Einstellungen"
+    "message": "Add-on-Einstellungen"
   },
   "options_headerSubtitleExtension": {
     "message": "Nextcloud-Erweiterungs-Einstellungen"
@@ -190,7 +206,7 @@
     "message": "Merlin braucht die Berechtigung für den Zugriff auf diesen Server, um fortzufahren."
   },
   "options_pageTitle": {
-    "message": "Merlin — Add-on-Einstellungen"
+    "message": "Merlin"
   },
   "options_pageTitleExtension": {
     "message": "Merlin — Erweiterungs-Einstellungen"

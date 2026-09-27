@@ -486,6 +486,17 @@ async function saveToMerlin({ nextcloudUrl, username, appPassword, backendKind, 
     return;
   }
   if (!response.ok) {
+    // Merlin lehnt bekannt unscrapbare Domains (siehe content-filters/$unsupported.xml
+    // im Nextcloud-Backend) schon synchron ab, statt den Artikel erst anzulegen und
+    // die Erweiterung nie über den asynchronen Fehlschlag zu informieren (wir pollen
+    // hier nie nach - siehe Kommentar oben). merlin-server (standalone-Backend) kennt
+    // diese Fehlerform evtl. (noch) nicht - dann greift einfach der generische Zweig.
+    let payload = null;
+    try { payload = await response.clone().json(); } catch { /* kein JSON-Body */ }
+    if (payload && payload.error === 'unsupported_site' && payload.domain) {
+      await injectFlyout(tabId, t('flyout_unsupportedSite', [payload.domain]), 'error');
+      return;
+    }
     await injectFlyout(tabId, t('flyout_serverError', [String(response.status)]), 'error');
     return;
   }
