@@ -27,6 +27,13 @@ All notable changes to Merlin for Firefox are documented here. Format based on
   `permissions.request()` outside a direct input handler) — it now only checks
   `permissions.contains()` and, if missing, points the user at the settings page,
   matching the pattern already proven in `merlin-thunderbird`
+- The settings page's own permission request (`ensureHostPermission()`, used when
+  starting the Nextcloud Login Flow) threw the same "permissions.request may only be
+  called from a user input handler" error, because it awaited a `permissions.contains()`
+  pre-check before calling `request()` — even that one intervening `await` was enough
+  to break the click's user-gesture chain in Firefox. `permissions.request()` already
+  resolves immediately without a prompt when the permission is present, so the
+  pre-check was both unnecessary and the actual cause; removed
 
 ### Security
 - Host permission for the Merlin server is now requested at runtime, scoped to that

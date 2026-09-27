@@ -93,7 +93,12 @@ function originPatternFor(url) {
 async function ensureHostPermission(url) {
   const origin = originPatternFor(url);
   if (!origin) return false;
-  if (await browser.permissions.contains({ origins: [origin] })) return true;
+  // Kein vorheriger permissions.contains()-Check: request() löst bei bereits
+  // erteilter Berechtigung ohnehin sofort auf, ohne Prompt. Ein await davor
+  // würde die User-Geste des Klicks kappen — Firefox verlangt für
+  // permissions.request() eine ununterbrochene Geste direkt aus dem
+  // Event-Handler, sonst "permissions.request may only be called from a user
+  // input handler" (siehe auch background.js-Kommentar zum selben Thema).
   return browser.permissions.request({ origins: [origin] });
 }
 
