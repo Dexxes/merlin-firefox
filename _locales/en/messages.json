@@ -21,10 +21,10 @@
     "message": "Send link to Merlin"
   },
   "extDescription": {
-    "message": "Save any link to your Nextcloud Merlin app with a single right-click."
+    "message": "Save any link to your Merlin app with a single right-click."
   },
   "extName": {
-    "message": "Merlin — Save to Nextcloud"
+    "message": "Merlin reading list"
   },
   "flyout_addedToReadingList": {
     "message": "Added to your reading list."
@@ -62,6 +62,14 @@
       }
     }
   },
+  "flyout_unsupportedSite": {
+    "message": "Not supported: $domain$ doesn't provide readable article text.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "notification_authFailedMessage": {
     "message": "Merlin: Login failed – please log in again"
   },
@@ -69,7 +77,7 @@
     "message": "Merlin: Login failed"
   },
   "notification_configureCredentials": {
-    "message": "Please configure your Nextcloud credentials first."
+    "message": "Please configure your credentials first."
   },
   "notification_defaultTitle": {
     "message": "Merlin"
@@ -86,6 +94,14 @@
   "notification_savedTitle": {
     "message": "Merlin: Saved ✓"
   },
+  "notification_unsupportedSiteMessage": {
+    "message": "Merlin: This site isn't supported ($domain$)",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "options_cancelLogin": {
     "message": "Cancel login…"
   },
@@ -98,7 +114,7 @@
     }
   },
   "options_cannotReach": {
-    "message": "Cannot reach Nextcloud: $error$",
+    "message": "Cannot reach server: $error$",
     "placeholders": {
       "error": {
         "content": "$1"
@@ -117,7 +133,7 @@
     "message": "Close tab"
   },
   "options_completeLogin": {
-    "message": "Complete the Nextcloud login in the new tab…"
+    "message": "Complete the login in the new tab…"
   },
   "options_connecting": {
     "message": "Connecting to Nextcloud…"
@@ -137,16 +153,16 @@
     "message": "Disconnected. Please log in again."
   },
   "options_enterUrlFirst": {
-    "message": "Please enter your Nextcloud URL first."
+    "message": "Please enter your URL first."
   },
   "options_enterUrlPlain": {
-    "message": "Please enter your Nextcloud URL."
+    "message": "Please enter your URL."
   },
   "options_headerSubtitle": {
-    "message": "Nextcloud Add-on Settings"
+    "message": "Extension Settings"
   },
   "options_headerSubtitleExtension": {
-    "message": "Nextcloud Extension Settings"
+    "message": "Merlin Extension Settings"
   },
   "options_httpWarning": {
     "message": "Warning: this URL uses http:// — your app password will be sent unencrypted. Use https:// if possible."
@@ -163,7 +179,7 @@
     "message": "Logged out. Credentials removed from this device."
   },
   "options_loggedOutWelcome": {
-    "message": "Logged out. Enter your Nextcloud URL and click \"Login with Nextcloud\" to get started."
+    "message": "Logged out. Enter your URL and click \"Login with Nextcloud\" to get started."
   },
   "options_loginButton": {
     "message": "Login with Nextcloud"
@@ -175,7 +191,7 @@
     "message": "Login cancelled."
   },
   "options_loginFirst": {
-    "message": "Please log in with Nextcloud first."
+    "message": "Please log in first."
   },
   "options_loginTimeout": {
     "message": "Login timed out after 5 minutes. Please try again."
@@ -190,7 +206,7 @@
     "message": "Merlin needs permission to access this server to continue."
   },
   "options_pageTitle": {
-    "message": "Merlin — Add-on Settings"
+    "message": "Merlin"
   },
   "options_pageTitleExtension": {
     "message": "Merlin — Extension Settings"
@@ -199,7 +215,7 @@
     "message": "Save settings"
   },
   "options_securityEnterUrl": {
-    "message": "Enter your Nextcloud URL first."
+    "message": "Enter your URL first."
   },
   "options_securityHint": {
     "message": "Manage app passwords in Nextcloud →"
@@ -242,13 +258,13 @@
     "message": "Testing…"
   },
   "options_urlHint": {
-    "message": "The base URL of your Nextcloud instance — HTTPS is required and added automatically (no trailing slash needed)"
+    "message": "The base URL of your Merlin instance - either a Nextcloud or a standalone server"
   },
   "options_urlHintShort": {
     "message": "The base URL of your Nextcloud instance (no trailing slash needed)"
   },
   "options_urlLabel": {
-    "message": "Nextcloud URL"
+    "message": "URL to your Merlin instance"
   },
   "options_urlPlaceholder": {
     "message": "cloud.example.com"
@@ -260,7 +276,7 @@
     "message": "URL saved. Use \"Login with Nextcloud\" to authenticate."
   },
   "options_welcome": {
-    "message": "Welcome! Enter your Nextcloud URL and click \"Login with Nextcloud\" to get started."
+    "message": "Welcome! Enter your URL and click \"Login with Nextcloud\" to get started."
   },
   "passphrase_activeHint": {
     "message": "Encrypted sync is active."
