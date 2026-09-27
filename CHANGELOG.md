@@ -4,6 +4,12 @@ All notable changes to Merlin for Firefox are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning based on
 [SemVer](https://semver.org/).
 
+## [1.2.2] - 2026-00-27
+
+### Added
+- Added detection of unsupported domains. When an article of such a domain is added
+  the extension shows a clear error message
+
 ## [1.2.0] - 2026-08-23
 
 ### Added
