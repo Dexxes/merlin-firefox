@@ -224,7 +224,7 @@
     "message": "Einstellungen → Sicherheit → App-Passwörter"
   },
   "options_sourceCodeLink": {
-    "message": "Quellcode / Git-Repository"
+    "message": "Quellcode auf GitHub"
   },
   "options_testAuthFailed": {
     "message": "Authentifizierung fehlgeschlagen. Bitte erneut über „Mit Nextcloud anmelden“ einloggen."
