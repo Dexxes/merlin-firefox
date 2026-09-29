@@ -223,6 +223,9 @@
   "options_securityLink": {
     "message": "Settings → Security → App passwords"
   },
+  "options_sourceCodeLink": {
+    "message": "Source code / Git repository"
+  },
   "options_testAuthFailed": {
     "message": "Authentication failed. Please log in again via \"Login with Nextcloud\"."
   },
