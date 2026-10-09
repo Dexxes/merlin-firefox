@@ -130,33 +130,73 @@
       gap: 6px;
       min-height: 28px;
     }
-    .tag-chip {
-      padding: 4px 11px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
+    /* Existing tags as an indented tree (sub-tags below their parent) */
+    .tag-tree {
+      flex-direction: column;
+      flex-wrap: nowrap;
+      gap: 0;
+      max-height: 196px;
+      overflow-y: auto;
       border: 1.5px solid #dde1e7;
-      background: #f4f6f9;
-      color: #555;
-      transition: background 0.12s, border-color 0.12s, color 0.12s;
-      white-space: nowrap;
-      line-height: 1.4;
+      border-radius: 8px;
+      padding: 4px 0;
     }
-    .tag-chip:hover {
-      border-color: #0082c9;
-      color: #0082c9;
+    .tag-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      flex-shrink: 0;
+      padding: 5px 10px;
+      border: none;
+      background: transparent;
+      color: #333;
+      font: inherit;
+      font-size: 12.5px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .tag-row:hover {
       background: #e8f3fb;
     }
-    .tag-chip.selected {
+    .tag-row:focus-visible {
+      outline: 2px solid #0082c9;
+      outline-offset: -2px;
+    }
+    .tag-check {
+      position: relative;
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      border: 1.5px solid #b8bfc8;
+      border-radius: 50%;
+      background: #fff;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .tag-row.selected .tag-check {
       background: #0082c9;
       border-color: #0082c9;
-      color: #fff;
     }
-    .tag-chip.selected:hover {
-      background: #006fab;
-      border-color: #006fab;
-      color: #fff;
+    .tag-row.selected .tag-check::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1.5px;
+      width: 3.5px;
+      height: 7px;
+      border: solid #fff;
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+    .tag-row.selected .tag-name {
+      color: #0082c9;
+      font-weight: 600;
+    }
+    .tag-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .tags-empty {
       font-size: 12px;

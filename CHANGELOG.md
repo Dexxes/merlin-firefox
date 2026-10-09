@@ -4,6 +4,14 @@ All notable changes to Merlin for Firefox are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning based on
 [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Nested tags (merlin-nextcloud): the "save with tags" dialog lists existing
+  tags as an indented tree with sub-tags below their parent instead of a row
+  of chips. Selecting a sub-tag also selects its parent tags; deselecting a
+  tag also deselects its sub-tags. Servers without nested tags show a flat list.
+
 ## [1.2.2] - 2026-00-27
 
 ### Added
