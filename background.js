@@ -393,7 +393,7 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
       url:    browser.runtime.getURL('save-dialog.html'),
       type:   'popup',
       width:  460,
-      height: 420,
+      height: 560,
     });
   } catch {
     // Fallback: save directly if window creation fails

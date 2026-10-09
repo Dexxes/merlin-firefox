@@ -158,31 +158,117 @@ function notifyAuthFailed() {
   });
 }
 
-// ─── Render clickable tag chips ───────────────────────────────────────────────
+// ─── Nested tags ──────────────────────────────────────────────────────────────
+// merlin-nextcloud tags carry `parentId` (null = top level). Mirrors
+// src/tag-tree.js there: tree order (parents before children, siblings by
+// name); a tag whose parent is missing counts as top level so it never
+// disappears. Servers without nested tags simply yield a flat list.
 
+function buildTagTree(rawTags) {
+  const tags = rawTags
+    .map(tag => typeof tag === 'string'
+      ? { id: tag, name: tag, parentId: null }
+      : { id: tag.id ?? tag.name, name: tag.name, parentId: tag.parentId ?? null })
+    .filter(tag => tag.name);
+  const byId = new Map(tags.map(tag => [tag.id, tag]));
+  const children = new Map();
+  for (const tag of tags) {
+    const parent = tag.parentId != null && byId.has(tag.parentId) ? tag.parentId : null;
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(tag);
+  }
+  for (const list of children.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  }
+
+  const rows = [];
+  const seen = new Set();
+  const walk = (parent, depth) => {
+    for (const tag of children.get(parent) || []) {
+      if (seen.has(tag.id)) continue;
+      seen.add(tag.id);
+      rows.push({ tag, depth });
+      walk(tag.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+
+  const ancestors = tag => {
+    const result = [];
+    const visited = new Set([tag.id]);
+    let parent = byId.get(tag.parentId);
+    while (parent && !visited.has(parent.id)) {
+      visited.add(parent.id);
+      result.push(parent);
+      parent = byId.get(parent.parentId);
+    }
+    return result;
+  };
+
+  const descendants = tag => {
+    const result = [];
+    const visited = new Set([tag.id]);
+    const queue = [...(children.get(tag.id) || [])];
+    while (queue.length) {
+      const next = queue.shift();
+      if (visited.has(next.id)) continue;
+      visited.add(next.id);
+      result.push(next);
+      queue.push(...(children.get(next.id) || []));
+    }
+    return result;
+  };
+
+  const path = tag => [...ancestors(tag).reverse(), tag].map(t => t.name).join(' › ');
+
+  return { rows, ancestors, descendants, path };
+}
+
+// ─── Render the tag tree ──────────────────────────────────────────────────────
+
+// Selecting a sub-tag also selects its parent tags; deselecting a tag also
+// deselects its sub-tags, so a sub-tag is never saved without its parent.
+// Tags are sent by name; names are unique across the whole tree.
 function renderChips(tags, container) {
+  const tree = buildTagTree(tags);
   container.replaceChildren();
+  container.classList.add('tag-tree');
 
-  tags.forEach(tag => {
-    const name = tag.name ?? tag;   // support both objects and plain strings
-    if (!name) return;
+  const rowButtons = [];
+  const refresh = () => {
+    for (const { button, name } of rowButtons) {
+      const selected = selectedChipTags.has(name);
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-checked', String(selected));
+    }
+  };
 
-    const chip = document.createElement('button');
-    chip.type        = 'button';
-    chip.textContent = name;
-    chip.className   = 'tag-chip';
-    if (selectedChipTags.has(name)) chip.classList.add('selected');
+  for (const { tag, depth } of tree.rows) {
+    const row = document.createElement('button');
+    row.type      = 'button';
+    row.className = 'tag-row';
+    row.setAttribute('role', 'checkbox');
+    row.style.paddingInlineStart = `${10 + depth * 18}px`;
+    if (depth > 0) row.title = tree.path(tag);
 
-    chip.addEventListener('click', () => {
-      if (selectedChipTags.has(name)) {
-        selectedChipTags.delete(name);
-        chip.classList.remove('selected');
+    const check = document.createElement('span');
+    check.className = 'tag-check';
+    const label = document.createElement('span');
+    label.className   = 'tag-name';
+    label.textContent = tag.name;
+    row.append(check, label);
+
+    row.addEventListener('click', () => {
+      if (selectedChipTags.has(tag.name)) {
+        for (const t of [tag, ...tree.descendants(tag)]) selectedChipTags.delete(t.name);
       } else {
-        selectedChipTags.add(name);
-        chip.classList.add('selected');
+        for (const t of [tag, ...tree.ancestors(tag)]) selectedChipTags.add(t.name);
       }
+      refresh();
     });
 
-    container.appendChild(chip);
-  });
+    rowButtons.push({ button: row, name: tag.name });
+    container.appendChild(row);
+  }
+  refresh();
 }
