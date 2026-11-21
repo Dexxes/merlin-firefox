@@ -6,6 +6,12 @@ All notable changes to Merlin for Firefox are documented here. Format based on
 
 ## [Unreleased]
 
+### Changed
+- Settings: the URL field is prefilled with `https://`, so only the host name
+  has to be typed. A full URL pasted into the field replaces the prefix instead
+  of being appended to it, and a host name without a scheme is saved with
+  `https://` in front.
+
 ### Fixed
 - Extension icon: the icons now come in the sizes the manifest declares
   (16, 32, 48, 96 and 128 px), all generated from the official Merlin logo.

@@ -8,9 +8,45 @@ const $ = id => document.getElementById(id);
 // originPatternFor, sameOrigin, serverBase and isAllowedServerUrl come from
 // common.js.
 
-// The URL as typed, trimmed and without a trailing slash.
+// An empty URL field starts with this prefix so the user only has to type
+// the host name.
+const URL_PREFIX = 'https://';
+
+// Cleans up what the user typed or pasted into the URL field:
+// - a URL pasted behind the prefilled "https://" ("https://https://…") keeps
+//   only the pasted scheme,
+// - the bare prefix counts as empty,
+// - a host name without a scheme gets "https://" in front.
+function normalizeUrlInput(raw) {
+  let v = raw.trim().replace(/^https?:\/\/(?=[a-z][a-z0-9+.-]*:\/\/)/i, '');
+  if (/^https?:\/\/$/i.test(v)) return '';
+  if (v && !/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) v = URL_PREFIX + v;
+  return v;
+}
+
+// The URL as typed, normalized, trimmed and without a trailing slash.
 function readServerUrl() {
-  return serverBase($('nextcloudUrl').value.trim());
+  return serverBase(normalizeUrlInput($('nextcloudUrl').value));
+}
+
+// Puts the "https://" prefix into an empty URL field.
+function prefillUrlField(url) {
+  $('nextcloudUrl').value = url || URL_PREFIX;
+}
+
+// A pasted full URL replaces the prefilled prefix instead of being appended.
+function onUrlInput(e) {
+  const field = e.target;
+  const fixed = field.value.replace(/^https?:\/\/(?=[a-z][a-z0-9+.-]*:\/\/)/i, '');
+  if (fixed !== field.value) field.value = fixed;
+}
+
+// Focusing the field with only the prefix puts the cursor behind it.
+function onUrlFocus(e) {
+  const field = e.target;
+  if (field.value === URL_PREFIX) {
+    requestAnimationFrame(() => field.setSelectionRange(URL_PREFIX.length, URL_PREFIX.length));
+  }
 }
 
 function showCloseButton() {
@@ -265,7 +301,7 @@ function refreshWelcomeText() {
 async function loadSettings() {
   const { nextcloudUrl, username, appPassword, backendKind } = await getCredentials();
 
-  if (nextcloudUrl) $('nextcloudUrl').value = nextcloudUrl;
+  prefillUrlField(nextcloudUrl);
   const radio = document.querySelector(`input[name="backendKind"][value="${backendKind === 'standalone' ? 'standalone' : 'nextcloud'}"]`);
   if (radio) radio.checked = true;
   updateLoginButtonLabel();
@@ -324,7 +360,7 @@ async function logout() {
   await clearCredentials();
 
   // Reset the UI to the "not connected" state of a first start
-  $('nextcloudUrl').value = '';
+  prefillUrlField('');
   updateLogoutButton(false);
   showStatus(backendText('options_loggedOutWelcome', 'options_loggedOutWelcomeStandalone'), 'info', 0);
 }
@@ -346,6 +382,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $('loginFlowBtn').addEventListener('click', startLoginFlow);
   $('saveBtn').addEventListener('click', saveSettings);
   $('logoutBtn').addEventListener('click', logout);
+  $('nextcloudUrl').addEventListener('input', onUrlInput);
+  $('nextcloudUrl').addEventListener('focus', onUrlFocus);
 
   document.querySelectorAll('input[name="backendKind"]').forEach(radio => {
     radio.addEventListener('change', () => {
