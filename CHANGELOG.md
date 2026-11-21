@@ -4,6 +4,15 @@ All notable changes to Merlin for Firefox are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning based on
 [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Extension icon: the icons now come in the sizes the manifest declares
+  (16, 32, 48, 96 and 128 px), all generated from the official Merlin logo.
+  Before, `icon-16.png` was 32 px and `icon-48.png`/`icon-128.png` were 192 px,
+  which addons.mozilla.org flags and which made Firefox scale the toolbar icon.
+  The add-ons manager now also gets a matching 96 px icon (48 px at 2x).
+
 ## [1.3.0] - 2026-11-21
 
 ### Added
