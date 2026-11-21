@@ -223,6 +223,18 @@
     }
     .backend-toggle input { width: auto; margin: 0; }
     .backend-toggle input:checked + span { color: #0082c9; }
+
+    /* Source code link */
+    .source-link {
+      display: block;
+      text-align: center;
+      margin-top: 22px;
+      font-size: 12px;
+      color: #999;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .source-link:hover { color: #0082c9; }
   </style>
 </head>
 <body>
@@ -281,6 +293,9 @@
       <span class="status-icon" id="statusIcon"></span>
       <span id="statusText"></span>
     </div>
+
+    <!-- Source code -->
+    <a class="source-link" href="https://github.com/dexxes/merlin-firefox" target="_blank" rel="noopener noreferrer" data-i18n="options_sourceCodeLink">Source code / Git repository</a>
 
   </div>
 

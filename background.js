@@ -447,12 +447,18 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   await browser.storage.local.set({ [key]: { url, tabId, isPage, windowId: null } });
 
   try {
-    const win = await browser.windows.create({
-      url:    browser.runtime.getURL(`save-dialog.html?id=${encodeURIComponent(saveId)}`),
-      type:   'popup',
-      width:  460,
-      height: 420,
+    const size = { width: 460, height: 640 };
+    const pos  = await centeredPosition(size, tab?.windowId);
+    const win  = await browser.windows.create({
+      url:  browser.runtime.getURL(`save-dialog.html?id=${encodeURIComponent(saveId)}`),
+      type: 'popup',
+      ...size,
+      ...pos,
     });
+    // Firefox sometimes ignores left/top on create; set them again.
+    if (pos && win?.id != null) {
+      await browser.windows.update(win.id, pos).catch(() => {});
+    }
     // Record the window ID so windows.onRemoved can clean up the entry. If
     // the dialog has already saved in the meantime, the entry is gone and is
     // not recreated.
@@ -466,6 +472,44 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
     await saveToMerlin({ ...creds, url, html, tabId, tags: [] });
   }
 });
+
+// ─── Dialog position ──────────────────────────────────────────────────────────
+
+// Centers a window of `size` on the screen the browser window is on. The
+// background page's `screen` describes the screen Firefox runs on; if the
+// browser window lies on another monitor, center over the browser window
+// instead (on a maximized window that is the middle of that screen too).
+async function centeredPosition(size, windowId) {
+  const center = (area) => ({
+    left: Math.round(area.left + Math.max(0, (area.width  - size.width)  / 2)),
+    top:  Math.round(area.top  + Math.max(0, (area.height - size.height) / 2)),
+  });
+
+  let browserWin = null;
+  try {
+    browserWin = windowId != null
+      ? await browser.windows.get(windowId)
+      : await browser.windows.getLastFocused();
+  } catch { /* ignore */ }
+
+  const scr = globalThis.screen;
+  const screenArea = scr && scr.availWidth > 0 ? {
+    left:   scr.availLeft ?? 0,
+    top:    scr.availTop  ?? 0,
+    width:  scr.availWidth,
+    height: scr.availHeight,
+  } : null;
+
+  if (browserWin?.width > 0 && browserWin?.height > 0) {
+    const cx = browserWin.left + browserWin.width  / 2;
+    const cy = browserWin.top  + browserWin.height / 2;
+    const onScreen = screenArea
+      && cx >= screenArea.left && cx < screenArea.left + screenArea.width
+      && cy >= screenArea.top  && cy < screenArea.top  + screenArea.height;
+    if (!onScreen) return center(browserWin);
+  }
+  return screenArea ? center(screenArea) : null;
+}
 
 // ─── API call ─────────────────────────────────────────────────────────────────
 
