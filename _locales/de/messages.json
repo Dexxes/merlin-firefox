@@ -223,6 +223,9 @@
   "options_securityLink": {
     "message": "Einstellungen → Sicherheit → App-Passwörter"
   },
+  "options_sourceCodeLink": {
+    "message": "Quellcode auf GitHub"
+  },
   "options_testAuthFailed": {
     "message": "Authentifizierung fehlgeschlagen. Bitte erneut über „Mit Nextcloud anmelden“ einloggen."
   },
@@ -361,6 +364,9 @@
   },
   "saveDialog_noCredentials": {
     "message": "Keine Zugangsdaten verfügbar"
+  },
+  "saveDialog_noMatchingTags": {
+    "message": "Keine passenden Tags"
   },
   "saveDialog_noTags": {
     "message": "Noch keine Tags vorhanden"

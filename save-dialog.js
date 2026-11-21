@@ -9,6 +9,9 @@ const t = (key, subs) => browser.i18n.getMessage(key, subs);
 // Tags selected via chips (independent from the text input)
 const selectedChipTags = new Set();
 
+// Set by renderChips(): re-filters the tag tree after the text input changed.
+let applyTagFilter = () => {};
+
 // Guards against pasting an unbounded comma-separated string into the tag
 // input — matches the server's own tag-name column width, kept in sync
 // manually (no shared module between extension and backend).
@@ -66,6 +69,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ─── Event listeners ─────────────────────────────────────────────────────────
   $('saveBtn').addEventListener('click', doSave);
   $('cancelBtn').addEventListener('click', doCancel);
+
+  // Typing filters the existing tags by the tag currently being typed
+  // (the text after the last comma).
+  $('tagsInput').addEventListener('input', () => applyTagFilter());
 
   $('tagsInput').addEventListener('keydown', e => {
     if (e.key === 'Enter')  { e.preventDefault(); doSave(); }
@@ -224,6 +231,40 @@ function buildTagTree(rawTags) {
   return { rows, ancestors, descendants, path };
 }
 
+// ─── Filter by the tag being typed ────────────────────────────────────────────
+// Only the part after the last comma counts: "news, tec" filters by "tec".
+
+function currentTagTerm(input) {
+  return input.value.split(',').pop().trim();
+}
+
+// Removes the partly typed tag after the last comma, so picking a tag from the
+// filtered list doesn't also save the typed fragment ("tec") as a new tag.
+function clearCurrentTagTerm(input) {
+  const parts = input.value.split(',');
+  parts[parts.length - 1] = '';
+  const kept = parts.slice(0, -1).map(p => p.trim()).filter(Boolean);
+  input.value = kept.length ? `${kept.join(', ')}, ` : '';
+}
+
+// Names of all tags to show for `term`: every tag whose name contains it
+// (case- and accent-insensitive), plus their parent tags so the tree stays
+// readable. Returns null for an empty term (= show everything).
+function visibleTagIds(tree, term) {
+  if (!term) return null;
+  const norm = s => s.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase();
+  const needle = norm(term);
+  const matches = new Set();
+  const visible = new Set();
+  for (const { tag } of tree.rows) {
+    if (!norm(tag.name).includes(needle)) continue;
+    matches.add(tag.id);
+    visible.add(tag.id);
+    for (const parent of tree.ancestors(tag)) visible.add(parent.id);
+  }
+  return { matches, visible };
+}
+
 // ─── Render the tag tree ──────────────────────────────────────────────────────
 
 // Selecting a sub-tag also selects its parent tags; deselecting a tag also
@@ -233,6 +274,12 @@ function renderChips(tags, container) {
   const tree = buildTagTree(tags);
   container.replaceChildren();
   container.classList.add('tag-tree');
+
+  const input = $('tagsInput');
+  const emptyHint = document.createElement('span');
+  emptyHint.className   = 'tags-empty tags-no-match';
+  emptyHint.textContent = t('saveDialog_noMatchingTags');
+  emptyHint.hidden      = true;
 
   const rowButtons = [];
   const refresh = () => {
@@ -259,6 +306,13 @@ function renderChips(tags, container) {
     row.append(check, label);
 
     row.addEventListener('click', () => {
+      // Picking a tag while filtering consumes the typed fragment and resets
+      // the filter, so the next tag can be typed right away.
+      if (currentTagTerm(input)) {
+        clearCurrentTagTerm(input);
+        applyTagFilter();
+        input.focus();
+      }
       if (selectedChipTags.has(tag.name)) {
         for (const t of [tag, ...tree.descendants(tag)]) selectedChipTags.delete(t.name);
       } else {
@@ -267,8 +321,21 @@ function renderChips(tags, container) {
       refresh();
     });
 
-    rowButtons.push({ button: row, name: tag.name });
+    rowButtons.push({ button: row, name: tag.name, id: tag.id });
     container.appendChild(row);
   }
+  container.appendChild(emptyHint);
+
+  applyTagFilter = () => {
+    const filter = visibleTagIds(tree, currentTagTerm(input));
+    for (const { button, id } of rowButtons) {
+      button.hidden = filter ? !filter.visible.has(id) : false;
+      // Parent rows shown only for context are dimmed.
+      button.classList.toggle('context-only', !!filter && !filter.matches.has(id));
+    }
+    emptyHint.hidden = !filter || filter.matches.size > 0;
+  };
+
   refresh();
+  applyTagFilter();
 }
