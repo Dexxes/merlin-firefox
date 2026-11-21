@@ -1,15 +1,26 @@
 'use strict';
 
+// Shared helpers (t, sleep, credentials, URL checks, auth-failure handling,
+// tag API helpers) come from common.js, which manifest.json loads before
+// this file.
+
 const MENU_ID_LINK      = 'merlin-send-link';
 const MENU_ID_LINK_TAGS = 'merlin-send-link-tags';
 const MENU_ID_PAGE      = 'merlin-save-page';
 const MENU_ID_PAGE_TAGS = 'merlin-save-page-tags';
 
-// ─── i18n shorthand ───────────────────────────────────────────────────────────
-// Liest lokalisierte Strings aus _locales/<lang>/messages.json (generiert aus
-// localization/strings/*.json via tools/i18n/export.py). `subs` ist optional
-// und wird auf die $1/$2-Platzhalter der jeweiligen Message abgebildet.
-const t = (key, subs) => browser.i18n.getMessage(key, subs);
+// Upper bound for the page HTML sent along with a page save. Larger pages
+// (e.g. with embedded data: images) are saved by URL only, and the server
+// fetches them itself.
+const MAX_HTML_BYTES = 10 * 1024 * 1024;
+
+// Request timeouts. Saving gets more time because it may upload up to
+// 10 MB of HTML.
+const SAVE_TIMEOUT_MS = 60_000;
+const TAGS_TIMEOUT_MS = 10_000;
+
+const PENDING_SAVE_PREFIX = '_merlinPendingSave_';
+const LOGIN_POLL_ALARM    = 'merlin-login-poll';
 
 // ─── Logo as base64 data URL ──────────────────────────────────────────────────
 // Pages block moz-extension:// URLs via CSP, so we convert the icon once to
@@ -33,130 +44,102 @@ async function getLogoDataUrl() {
   return _logoDataUrl;
 }
 
-// ─── Credential storage helpers ───────────────────────────────────────────────
-//
-// storage.sync ist die bevorzugte Ablage: Mozilla verschlüsselt storage.sync
-// serverseitig Ende-zu-Ende als Teil der Firefox-Sync-Infrastruktur (Schlüssel
-// pro Firefox-Konto, für Mozilla selbst nicht einsehbar). Das App-Passwort kann
-// damit gefahrlos automatisch auf alle Geräte verteilt werden — eine eigene
-// Verschlüsselung im Code ist dafür nicht nötig. Ist storage.sync nicht
-// verfügbar (kein Firefox-Konto angemeldet), dient storage.local als Fallback.
-
-async function getCredentials() {
-  try {
-    const synced = await browser.storage.sync.get(['nextcloudUrl', 'username', 'appPassword', 'backendKind']);
-    if (synced.nextcloudUrl || synced.username || synced.appPassword) return synced;
-  } catch { /* storage.sync evtl. nicht verfügbar */ }
-  return browser.storage.local.get(['nextcloudUrl', 'username', 'appPassword', 'backendKind']);
-}
-
-async function setCredentials(fields) {
-  try {
-    await browser.storage.sync.set(fields);
-  } catch {
-    await browser.storage.local.set(fields);
-  }
-}
-
-async function clearCredentials() {
-  try { await browser.storage.sync.remove(['nextcloudUrl', 'username', 'appPassword']); } catch { /* ignore */ }
-  await browser.storage.local.remove(['nextcloudUrl', 'username', 'appPassword']);
-}
-
 // ─── Migration: storage.local → storage.sync ──────────────────────────────────
 //
-// Eine frühere Fix-Runde hatte Zugangsdaten nach storage.local verschoben, in
-// der irrtümlichen Annahme, storage.sync sei unverschlüsselt. Tatsächlich
-// verschlüsselt Mozilla storage.sync serverseitig Ende-zu-Ende — wir holen
-// bestehende lokale Zugangsdaten daher einmalig zurück nach storage.sync.
-// Verwaiste Crypto-Reste (encPassphrase/credEnc) aus einem Zwischenschritt mit
-// eigener AES-Verschlüsselung werden ebenfalls aufgeräumt (für Firefox/Thunderbird
-// nicht mehr nötig, da Mozilla das bereits serverseitig erledigt).
+// An earlier version moved credentials to storage.local, wrongly assuming
+// storage.sync was unencrypted. Firefox Sync encrypts storage.sync
+// end-to-end, so existing local credentials are moved back once. Leftovers
+// from an intermediate custom AES layer (encPassphrase/credEnc) and the old
+// single-slot pending save are cleaned up as well.
 async function migrateCredentialsToSync() {
   try {
-    const local = await browser.storage.local.get(['nextcloudUrl', 'username', 'appPassword', 'backendKind']);
+    const local = await browser.storage.local.get(CREDENTIAL_KEYS);
     if (local.nextcloudUrl || local.username || local.appPassword) {
       await browser.storage.sync.set(local);
-      await browser.storage.local.remove(['nextcloudUrl', 'username', 'appPassword', 'backendKind']);
+      await browser.storage.local.remove(CREDENTIAL_KEYS);
     } else if (local.backendKind) {
-      // Reparatur für Installationen, bei denen eine ältere Version dieser
-      // Migration nextcloudUrl/username/appPassword bereits nach sync verschoben
-      // hatte, backendKind dabei aber in storage.local zurückließ (Bug: fehlte
-      // im damaligen Feldset oben). getCredentials() liest bei vorhandenem Sync-
-      // Eintrag storage.local gar nicht mehr — das verwaiste backendKind wäre
-      // sonst dauerhaft unsichtbar und ein Standalone-Server-Save würde
-      // fälschlich den Nextcloud-API-Pfad verwenden.
+      // Repairs installs where an older version of this migration moved the
+      // credentials but left backendKind behind in storage.local.
       await browser.storage.sync.set({ backendKind: local.backendKind });
       await browser.storage.local.remove('backendKind');
     }
-    await browser.storage.local.remove('encPassphrase');
+    await browser.storage.local.remove(['encPassphrase', '_merlinPendingSave']);
     await browser.storage.sync.remove('credEnc');
   } catch {
-    // storage.sync evtl. nicht verfügbar — Zugangsdaten bleiben dann lokal
+    // storage.sync may be unavailable — credentials then stay local
   }
 }
 
 browser.runtime.onInstalled.addListener(migrateCredentialsToSync);
 browser.runtime.onStartup.addListener(migrateCredentialsToSync);
 
-// ─── Runtime host permission for the user's Nextcloud server ─────────────────
-//
-// host_permissions ist nur noch optional (manifest.json) statt pauschal
-// <all_urls> — die Erweiterung fragt stattdessen genau die Origin an, die der
-// Nutzer als Nextcloud-Server konfiguriert. Das funktioniert hier, weil der
-// Request innerhalb eines Kontextmenü-Klicks (User-Geste) ausgelöst wird.
-
-function originPatternFor(url) {
-  try {
-    const u = new URL(url);
-    return `${u.protocol}//${u.host}/*`;
-  } catch {
-    return null;
-  }
-}
-
-function sameOrigin(a, b) {
-  try { return new URL(a).origin === new URL(b).origin; } catch { return false; }
-}
-
 // ─── Login Flow polling ───────────────────────────────────────────────────────
 //
-// Das Polling läuft hier im Hintergrundskript, nicht in der Options-Seite:
-// Firefox öffnet die Options-Seite per Toolbar-Klick standardmäßig als kleines
-// Popup (default_popup). Sobald der Login-Tab im Vordergrund den Fokus bekommt,
-// schließt sich das Popup automatisch — ein dort laufendes Polling würde damit
-// abreißen. Das Ergebnis landet in storage.local, von wo aus die Options-Seite
-// (egal ob sie das noch ist oder gerade neu geöffnet wurde) es per
-// storage.onChanged abholt.
+// Polling runs here rather than on the options page: Firefox opens the
+// options page from the toolbar as a popup, which closes as soon as the login
+// tab takes focus. The result is written to storage.local, where the options
+// page picks it up via storage.onChanged.
+//
+// Under Manifest V3 the background script is a non-persistent event page that
+// Firefox may unload at any time. The full flow state therefore lives in
+// storage.local (_merlinLoginFlow), and an alarm wakes the page every 30 s.
+// If no poll is running in memory at that point, it resumes from the stored
+// state; once the deadline has passed, the flow ends with a timeout message
+// instead of hanging silently.
+
+const LOGIN_FLOW_TIMEOUT_MS = 5 * 60 * 1000;
 
 let _lfTimer  = null;
 let _lfActive = false;
 
 async function startBackgroundLoginPoll({ pollEndpoint, pollToken, serverUrl, loginTabId, backendKind }) {
-  if (_lfActive) {
-    _lfActive = false;
-    clearTimeout(_lfTimer);
-    _lfTimer = null;
+  _lfStopTimer();
+
+  // The poll token (and the response carrying the app password) may only be
+  // exchanged with the server the user entered.
+  if (typeof pollToken !== 'string' || !pollToken
+      || !sameOrigin(pollEndpoint, serverUrl) || !isAllowedServerUrl(pollEndpoint)) {
+    await browser.storage.local.set({ _merlinLoginFlowResult: { error: t('options_loginInvalidResponse') } });
+    return;
   }
 
-  _lfActive = true;
-  await browser.storage.local.set({ _merlinLoginFlow: { active: true, loginTabId } });
+  const flow = {
+    active: true,
+    loginTabId,
+    pollEndpoint,
+    pollToken,
+    serverUrl,
+    backendKind,
+    deadline: Date.now() + LOGIN_FLOW_TIMEOUT_MS,
+  };
+  await browser.storage.local.set({ _merlinLoginFlow: flow });
+  browser.alarms.create(LOGIN_POLL_ALARM, { periodInMinutes: 0.5 });
 
-  const deadline = Date.now() + 5 * 60 * 1000; // 5-Minuten-Timeout
+  _lfRun(flow, 2000);
+}
+
+function _lfStopTimer() {
+  _lfActive = false;
+  clearTimeout(_lfTimer);
+  _lfTimer = null;
+}
+
+function _lfRun(flow, delayMs) {
+  _lfActive = true;
 
   async function poll() {
     if (!_lfActive) return;
 
-    if (Date.now() > deadline) {
+    if (Date.now() > flow.deadline) {
       await _lfFinish({ error: t('options_loginTimeout') });
       return;
     }
 
     try {
-      const r = await fetch(pollEndpoint, {
+      const r = await fetch(flow.pollEndpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    `token=${encodeURIComponent(pollToken)}`,
+        body:    `token=${encodeURIComponent(flow.pollToken)}`,
         signal:  AbortSignal.timeout(5_000),
       });
 
@@ -170,55 +153,81 @@ async function startBackgroundLoginPoll({ pollEndpoint, pollToken, serverUrl, lo
       const creds = await r.json();
       if (!_lfActive) return;
 
-      await _lfFinish({ creds, serverUrl, backendKind });
+      await _lfFinish({ creds, serverUrl: flow.serverUrl, backendKind: flow.backendKind });
     } catch {
       // Transient network error — keep retrying
       if (_lfActive) _lfTimer = setTimeout(poll, 2000);
     }
   }
 
-  _lfTimer = setTimeout(poll, 2000);
+  _lfTimer = setTimeout(poll, delayMs);
 }
 
+// Resumes a stored flow after Firefox unloaded the event page (alarm) or the
+// browser restarted (onStartup).
+async function resumeBackgroundLoginPoll() {
+  if (_lfActive) return;
+  const { _merlinLoginFlow: flow } = await browser.storage.local.get('_merlinLoginFlow');
+  if (!flow?.active) {
+    await browser.alarms.clear(LOGIN_POLL_ALARM);
+    return;
+  }
+  if (Date.now() > flow.deadline) {
+    await _lfFinish({ error: t('options_loginTimeout') });
+    return;
+  }
+  _lfRun(flow, 0);
+}
+
+browser.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === LOGIN_POLL_ALARM) resumeBackgroundLoginPoll();
+});
+browser.runtime.onStartup.addListener(resumeBackgroundLoginPoll);
+
 async function cancelBackgroundLoginPoll() {
-  if (!_lfActive) return;
-  _lfActive = false;
-  clearTimeout(_lfTimer);
-  _lfTimer = null;
+  _lfStopTimer();
+  await browser.alarms.clear(LOGIN_POLL_ALARM);
   await browser.storage.local.remove('_merlinLoginFlow');
   await browser.storage.local.set({ _merlinLoginFlowResult: { cancelled: true } });
 }
 
 async function _lfFinish({ creds, serverUrl, backendKind, error }) {
-  _lfActive = false;
-  clearTimeout(_lfTimer);
-  _lfTimer = null;
+  _lfStopTimer();
+  await browser.alarms.clear(LOGIN_POLL_ALARM);
 
   const { _merlinLoginFlow } = await browser.storage.local.get('_merlinLoginFlow');
   const loginTabId = _merlinLoginFlow?.loginTabId;
   await browser.storage.local.remove('_merlinLoginFlow');
+
+  if (!error) {
+    const valid = creds
+      && typeof creds.loginName === 'string' && creds.loginName
+      && typeof creds.appPassword === 'string' && creds.appPassword;
+    if (!valid) error = t('options_loginInvalidResponse');
+  }
 
   if (error) {
     await browser.storage.local.set({ _merlinLoginFlowResult: { error } });
     return;
   }
 
-  // Die Poll-Response darf die Server-URL nur ersetzen, wenn sie zur selben
-  // Origin gehört wie die ursprünglich eingegebene URL — sonst könnte ein
-  // kompromittierter Server künftigen Save-Traffic (samt neu ausgestelltem
-  // App-Passwort) stillschweigend auf eine andere Origin umleiten.
-  const finalServerUrl = (sameOrigin(creds.server, serverUrl) ? creds.server : serverUrl).replace(/\/$/, '');
+  // The poll response may only replace the server URL if it is same-origin
+  // with the URL the user entered — otherwise a compromised server could
+  // silently redirect future save traffic (including the newly issued app
+  // password) to another origin.
+  const finalServerUrl = serverBase(sameOrigin(creds.server, serverUrl) ? creds.server : serverUrl);
   await setCredentials({
     nextcloudUrl: finalServerUrl,
     username:     creds.loginName,
     appPassword:  creds.appPassword,
     backendKind,
   });
+  await resetAuthFailures();
 
-  // Close the Nextcloud login tab
+  // Close the login tab
   if (loginTabId != null) browser.tabs.remove(loginTabId).catch(() => {});
 
-  // Notify options page via storage (falls sie noch offen ist)
+  // Notify the options page via storage (in case it is still open)
   await browser.storage.local.set({
     _merlinLoginFlowResult: {
       success:     true,
@@ -227,19 +236,16 @@ async function _lfFinish({ creds, serverUrl, backendKind, error }) {
     },
   });
 
-  // Automatisch zurück zu den Einstellungen: fokussiert eine bereits offene
-  // Options-Seite oder öffnet sie neu — wichtig, falls das Popup beim Öffnen
-  // des Login-Tabs bereits geschlossen wurde.
+  // Return to the settings: focuses an open options page or opens a new one.
   browser.runtime.openOptionsPage().catch(() => {});
 }
 
 // ─── Message handler ──────────────────────────────────────────────────────────
 
 browser.runtime.onMessage.addListener((msg, sender) => {
-  // Nur Nachrichten von der eigenen Extension akzeptieren (z. B. der
-  // Options-Seite) — verhindert, dass ein künftig hinzugefügtes Content-Script
-  // oder eine andere Extension startBackgroundLoginPoll() mit eigenen
-  // pollEndpoint/serverUrl-Werten aufrufen könnte.
+  // Only accept messages from this extension's own pages (options page, save
+  // dialog) — keeps a future content script or another extension from
+  // calling startBackgroundLoginPoll() with its own endpoint/server values.
   if (sender.id !== browser.runtime.id) return;
 
   if (msg.type === 'merlin:startLoginPoll') {
@@ -251,46 +257,92 @@ browser.runtime.onMessage.addListener((msg, sender) => {
     return Promise.resolve({ ok: true });
   }
   if (msg.type === 'merlin:saveWithTags') {
-    handleSaveWithTags(msg.tags ?? [], msg.windowId ?? null);
+    handleSaveWithTags(msg.saveId, msg.tags ?? []);
     return Promise.resolve({ ok: true });
   }
   if (msg.type === 'merlin:cancelSave') {
-    browser.storage.local.remove('_merlinPendingSave').catch(() => {});
+    takePendingSave(msg.saveId).then(p => {
+      if (p?.windowId != null) browser.windows.remove(p.windowId).catch(() => {});
+    });
     return Promise.resolve({ ok: true });
   }
 });
 
-// ─── Save with tags (called from save-dialog) ─────────────────────────────────
+// ─── Pending saves (tag dialog) ───────────────────────────────────────────────
+//
+// Each open tag dialog gets its own entry (its own ID instead of one global
+// slot), so several open dialogs don't overwrite each other. The entry holds
+// no credentials — they are read fresh via getCredentials() when saving.
+// Closing the dialog with the window's close button cleans up the entry via
+// windows.onRemoved; leftovers from the previous session are removed on
+// browser startup.
 
-async function handleSaveWithTags(tags, windowId) {
-  // Close the dialog window
-  if (windowId != null) browser.windows.remove(windowId).catch(() => {});
+function pendingSaveKey(saveId) {
+  return `${PENDING_SAVE_PREFIX}${saveId}`;
+}
 
-  const { _merlinPendingSave } = await browser.storage.local.get('_merlinPendingSave');
-  await browser.storage.local.remove('_merlinPendingSave');
+async function takePendingSave(saveId) {
+  if (typeof saveId !== 'string' || !saveId) return null;
+  const key = pendingSaveKey(saveId);
+  const { [key]: pending } = await browser.storage.local.get(key);
+  await browser.storage.local.remove(key);
+  return pending ?? null;
+}
 
-  if (!_merlinPendingSave) return;
+async function removePendingSaves(filter) {
+  const all = await browser.storage.local.get(null);
+  const keys = Object.keys(all).filter(k => k.startsWith(PENDING_SAVE_PREFIX) && filter(all[k]));
+  if (keys.length) await browser.storage.local.remove(keys);
+}
 
-  const { url, tabId, nextcloudUrl, username, appPassword, backendKind, isPage } = _merlinPendingSave;
+browser.windows.onRemoved.addListener((windowId) => {
+  removePendingSaves(p => p?.windowId === windowId).catch(() => {});
+});
+browser.runtime.onStartup.addListener(() => {
+  removePendingSaves(() => true).catch(() => {});
+});
 
-  // HTML wird erst jetzt (statt schon beim Öffnen des Dialogs) eingefangen, um
-  // es nicht zwischenzeitlich in storage.local ablegen zu müssen — bei großen
-  // Seiten würde das an dessen Quota stoßen. Der Tab existiert zu diesem
-  // Zeitpunkt noch, da der Save-Dialog nur ein separates Popup-Fenster ist und
-  // den ursprünglichen Tab nicht schließt.
+// ─── Save with tags (called from the save dialog) ─────────────────────────────
+
+async function handleSaveWithTags(saveId, tags) {
+  // Take the entry first, then close the window — otherwise windows.onRemoved
+  // could clean it up before we read it.
+  const pending = await takePendingSave(saveId);
+  if (!pending) return;
+  if (pending.windowId != null) browser.windows.remove(pending.windowId).catch(() => {});
+
+  const { url, tabId, isPage } = pending;
+  const creds = await getCredentials();
+  if (!creds.nextcloudUrl || !creds.username || !creds.appPassword) {
+    await injectFlyout(tabId, t('notification_configureCredentials'), 'error');
+    return;
+  }
+
+  await injectFlyout(tabId, t('flyout_saving'), 'loading');
+
+  // The HTML is only captured now, so it never has to sit in storage.local.
+  // The tab still exists: the save dialog is a separate popup window.
   let html = null;
   if (isPage && tabId != null) html = await captureTabHtml(tabId);
 
-  await saveToMerlin({ nextcloudUrl, username, appPassword, backendKind, url, tabId, tags, html });
+  await saveToMerlin({ ...creds, url, tabId, tags, html });
 }
 
-// ─── HTML-Capture für Seiten-Speichern ────────────────────────────────────────
+// ─── HTML capture for page saves ──────────────────────────────────────────────
 
 async function captureTabHtml(tabId) {
   try {
     const results = await browser.scripting.executeScript({
       target: { tabId },
-      func:   () => document.documentElement.outerHTML,
+      // Runs in the page. Pages over the limit return null and are saved by
+      // URL only. The UTF-16 length is never larger than the UTF-8 byte
+      // size, hence the cheap pre-check.
+      func: (maxBytes) => {
+        const html = document.documentElement.outerHTML;
+        if (html.length > maxBytes) return null;
+        return new Blob([html]).size > maxBytes ? null : html;
+      },
+      args: [MAX_HTML_BYTES],
     });
     return results?.[0]?.result ?? null;
   } catch {
@@ -299,6 +351,10 @@ async function captureTabHtml(tabId) {
 }
 
 // ─── Context menu setup ───────────────────────────────────────────────────────
+//
+// Menu items persist across event-page unloads and browser restarts, so they
+// only need to be created on install and update (onInstalled), not on every
+// startup.
 
 function setupContextMenu() {
   browser.contextMenus.removeAll().then(() => {
@@ -326,7 +382,6 @@ function setupContextMenu() {
 }
 
 browser.runtime.onInstalled.addListener(setupContextMenu);
-browser.runtime.onStartup.addListener(setupContextMenu);
 
 // ─── Context menu click ───────────────────────────────────────────────────────
 
@@ -337,11 +392,14 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   const withTags = menuItemId === MENU_ID_LINK_TAGS || menuItemId === MENU_ID_PAGE_TAGS;
   if (!isLink && !isPage) return;
 
+  // tab.url is available through activeTab (granted by the context-menu
+  // click), so no tabs permission is needed.
   const url   = isLink ? info.linkUrl : tab?.url;
   const tabId = tab?.id;
   if (!url) return;
 
-  const { nextcloudUrl, username, appPassword, backendKind } = await getCredentials();
+  const creds = await getCredentials();
+  const { nextcloudUrl, username, appPassword } = creds;
 
   // No credentials yet → show flyout + open settings
   if (!nextcloudUrl || !username || !appPassword) {
@@ -352,17 +410,18 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  // Host-Permission ist seit dem Permissions-Fix nur noch optional und auf die
-  // konkrete Nextcloud-Origin beschränkt (statt <all_urls>) — wird normalerweise
-  // schon beim Login in den Optionen erteilt (dort passiert das synchron-direkt
-  // im Klick-Handler, siehe ensureHostPermission() in options.js). Hier können
-  // wir die Permission NICHT per request() nachfordern: bis hier hin ist schon
-  // ein await (getCredentials) gelaufen, und Firefox verlangt für
-  // permissions.request() eine ununterbrochene User-Geste direkt aus dem
-  // Event-Handler — sonst "permissions.request may only be called from a user
-  // input handler". Daher nur passiv prüfen (contains, kein await davor nötig)
-  // und bei fehlender Berechtigung auf die Einstellungen verweisen, wo der
-  // saubere Re-Grant passiert.
+  // Older installs may still have an http:// URL stored.
+  if (!isAllowedServerUrl(nextcloudUrl)) {
+    await injectFlyout(tabId, t('flyout_httpBlocked'), 'error');
+    browser.runtime.openOptionsPage();
+    return;
+  }
+
+  // The host permission is optional and limited to the configured server's
+  // origin; it is granted on login in the options page. It can NOT be
+  // requested here: an await has already run, and Firefox requires an
+  // uninterrupted user gesture for permissions.request(). So only check it
+  // and point the user to the settings if it is missing.
   const origin = originPatternFor(nextcloudUrl);
   if (origin && !(await browser.permissions.contains({ origins: [origin] }))) {
     await injectFlyout(tabId, t('notification_needsPermission'), 'error');
@@ -372,27 +431,26 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
 
   // ── Direct save (no dialog) ─────────────────────────────────────────────────
   if (!withTags) {
-    // Show loading flyout immediately
     await injectFlyout(tabId, t('flyout_saving'), 'loading');
 
-    // For page saves, capture the current rendered HTML so the server can skip
-    // its own HTTP fetch (works for paywalled and JS-rendered pages). For link
-    // saves the server fetches the target URL directly — no HTML needed.
+    // For page saves, send the rendered HTML so the server can skip its own
+    // fetch (paywalled and JS-rendered pages). Link saves are fetched by the
+    // server directly.
     const html = isPage ? await captureTabHtml(tabId) : null;
-    await saveToMerlin({ nextcloudUrl, username, appPassword, backendKind, url, html, tabId, tags: [] });
+    await saveToMerlin({ ...creds, url, html, tabId, tags: [] });
     return;
   }
 
   // ── Save with tags — open dialog ────────────────────────────────────────────
-  await browser.storage.local.set({
-    _merlinPendingSave: { url, tabId, nextcloudUrl, username, appPassword, backendKind, isPage },
-  });
+  const saveId = crypto.randomUUID();
+  const key    = pendingSaveKey(saveId);
+  await browser.storage.local.set({ [key]: { url, tabId, isPage, windowId: null } });
 
   try {
     const size = { width: 460, height: 640 };
     const pos  = await centeredPosition(size, tab?.windowId);
     const win  = await browser.windows.create({
-      url:  browser.runtime.getURL('save-dialog.html'),
+      url:  browser.runtime.getURL(`save-dialog.html?id=${encodeURIComponent(saveId)}`),
       type: 'popup',
       ...size,
       ...pos,
@@ -401,12 +459,17 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
     if (pos && win?.id != null) {
       await browser.windows.update(win.id, pos).catch(() => {});
     }
+    // Record the window ID so windows.onRemoved can clean up the entry. If
+    // the dialog has already saved in the meantime, the entry is gone and is
+    // not recreated.
+    const { [key]: pending } = await browser.storage.local.get(key);
+    if (pending) await browser.storage.local.set({ [key]: { ...pending, windowId: win.id } });
   } catch {
     // Fallback: save directly if window creation fails
-    await browser.storage.local.remove('_merlinPendingSave');
+    await browser.storage.local.remove(key);
     await injectFlyout(tabId, t('flyout_saving'), 'loading');
     const html = isPage ? await captureTabHtml(tabId) : null;
-    await saveToMerlin({ nextcloudUrl, username, appPassword, backendKind, url, html, tabId, tags: [] });
+    await saveToMerlin({ ...creds, url, html, tabId, tags: [] });
   }
 });
 
@@ -450,93 +513,111 @@ async function centeredPosition(size, windowId) {
 
 // ─── API call ─────────────────────────────────────────────────────────────────
 
-// merlin-server hat keine Pocket-kompatible Extension-API (/api/v1/add), die
-// Tag-Namen serverseitig auflöst - Tag-IDs müssen hier vorab per /api/tags
-// aufgelöst (bzw. bei Bedarf neu angelegt) werden.
-async function resolveTagIdsStandalone(nextcloudUrl, creds, tagNames) {
-  if (!tagNames || tagNames.length === 0) return [];
+// merlin-server has no Pocket-style extension API (/api/v1/add) that resolves
+// tag names on the server, so tag IDs are resolved (or created) here via
+// /api/tags first. Also returns the names that could not be applied, so the
+// toast can report them honestly.
+async function resolveTagIdsStandalone(nextcloudUrl, authHeader, tagNames) {
+  if (!tagNames || tagNames.length === 0) return { ids: [], failed: [] };
 
-  const base = nextcloudUrl.replace(/\/$/, '');
-  const headers = { 'Authorization': `Basic ${creds}`, 'Content-Type': 'application/json' };
+  const endpoint = tagsEndpoint(nextcloudUrl, 'standalone');
+  const headers  = { 'Authorization': authHeader, 'Content-Type': 'application/json' };
 
-  let existing = [];
+  // Without the existing tag list every tag would be created again as a
+  // duplicate — rather apply none and report that.
+  let existing;
   try {
-    const resp = await fetch(`${base}/api/tags`, { method: 'GET', headers });
-    if (resp.ok) existing = await resp.json();
-  } catch { /* fällt unten auf "alle neu anlegen" zurück */ }
+    const resp = await fetch(endpoint, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(TAGS_TIMEOUT_MS),
+    });
+    if (!resp.ok) return { ids: [], failed: [...tagNames] };
+    existing = normalizeTagList(await resp.json());
+  } catch {
+    return { ids: [], failed: [...tagNames] };
+  }
 
   const ids = [];
+  const failed = [];
   for (const name of tagNames) {
-    const match = existing.find(t => t.name.toLowerCase() === name.toLowerCase());
+    const match = existing.find(tag => String(tag.name).toLowerCase() === name.toLowerCase());
     if (match) {
       ids.push(match.id);
       continue;
     }
     try {
-      const resp = await fetch(`${base}/api/tags`, {
+      const resp = await fetch(endpoint, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ name }),
+        body:   JSON.stringify({ name }),
+        signal: AbortSignal.timeout(TAGS_TIMEOUT_MS),
       });
-      if (resp.ok) {
-        const created = await resp.json();
-        ids.push(created.id);
-        existing.push(created);
-      }
-    } catch { /* einzelnes Tag konnte nicht angelegt werden - überspringen */ }
+      if (!resp.ok) { failed.push(name); continue; }
+      const created = await resp.json();
+      ids.push(created.id);
+      existing.push(created);
+    } catch {
+      failed.push(name);
+    }
   }
-  return ids;
+  return { ids, failed };
 }
 
 async function saveToMerlin({ nextcloudUrl, username, appPassword, backendKind, url, html, tabId, tags = [] }) {
-  const creds = btoa(`${username}:${appPassword}`);
+  if (!isAllowedServerUrl(nextcloudUrl)) {
+    await injectFlyout(tabId, t('flyout_httpBlocked'), 'error');
+    return;
+  }
+
+  const authHeader = basicAuthHeader(username, appPassword);
+  let failedTags = [];
 
   let apiUrl, body;
   if (backendKind === 'standalone') {
-    // merlin-server hat keine Pocket-kompatible Extension-API (/api/v1/add) -
-    // stattdessen wird der native Endpunkt genutzt, den auch die Leseliste
-    // (library.php) zum Hinzufügen nutzt. /api/articles akzeptiert html genau
-    // wie /index.php/apps/merlin/api/v1/add unten (extractFromHtml()-Pipeline
-    // ist ein 1:1-Port aus Nextcloud).
-    apiUrl = `${nextcloudUrl.replace(/\/$/, '')}/api/articles`;
-    const tagIds = await resolveTagIdsStandalone(nextcloudUrl, creds, tags);
+    // merlin-server uses its native /api/articles endpoint, which accepts html
+    // exactly like the Nextcloud app's /api/v1/add below.
+    apiUrl = `${serverBase(nextcloudUrl)}/api/articles`;
+    const { ids: tagIds, failed } = await resolveTagIdsStandalone(nextcloudUrl, authHeader, tags);
+    failedTags = failed;
     body = tagIds.length > 0 ? { url, tagIds } : { url };
-    if (html) body.html = html;
   } else {
-    apiUrl = `${nextcloudUrl.replace(/\/$/, '')}/index.php/apps/merlin/api/v1/add`;
+    apiUrl = `${serverBase(nextcloudUrl)}/index.php/apps/merlin/api/v1/add`;
     body = { url };
     if (tags && tags.length > 0) body.tags = tags;
-    if (html) body.html = html;
   }
+  if (html) body.html = html;
 
   let response;
   try {
     response = await fetch(apiUrl, {
       method:  'POST',
       headers: {
-        'Authorization': `Basic ${creds}`,
+        'Authorization': authHeader,
         'Content-Type':  'application/json',
       },
-      body: JSON.stringify(body),
+      body:   JSON.stringify(body),
+      signal: AbortSignal.timeout(SAVE_TIMEOUT_MS),
     });
   } catch (networkError) {
-    await injectFlyout(tabId, t('flyout_connectionFailed', [networkError.message]), 'error');
+    const message = networkError?.name === 'TimeoutError'
+      ? t('flyout_timeout')
+      : t('flyout_connectionFailed', [networkError.message]);
+    await injectFlyout(tabId, message, 'error');
     return;
   }
 
   if (response.status === 401) {
-    await injectFlyout(tabId, t('flyout_authFailed'), 'error');
-    await handleAuthFailure();
+    const cleared = await recordAuthFailure();
+    await injectFlyout(tabId, cleared ? t('flyout_authFailed') : t('flyout_authFailedRetry'), 'error');
     return;
   }
   if (!response.ok) {
-    // Merlin lehnt bekannt unscrapbare Domains (siehe content-filters/$unsupported.xml
-    // im Nextcloud-Backend) schon synchron ab, statt den Artikel erst anzulegen und
-    // die Erweiterung nie über den asynchronen Fehlschlag zu informieren (wir pollen
-    // hier nie nach - siehe Kommentar oben). merlin-server (standalone-Backend) kennt
-    // diese Fehlerform evtl. (noch) nicht - dann greift einfach der generische Zweig.
+    // The Nextcloud backend rejects known unscrapable domains (see
+    // content-filters/$unsupported.xml there) synchronously. merlin-server
+    // may not know this error shape (yet) — then the generic branch applies.
     let payload = null;
-    try { payload = await response.clone().json(); } catch { /* kein JSON-Body */ }
+    try { payload = await response.clone().json(); } catch { /* no JSON body */ }
     if (payload && payload.error === 'unsupported_site' && payload.domain) {
       await injectFlyout(tabId, t('flyout_unsupportedSite', [payload.domain]), 'error');
       return;
@@ -545,18 +626,26 @@ async function saveToMerlin({ nextcloudUrl, username, appPassword, backendKind, 
     return;
   }
 
+  await resetAuthFailures();
+
   // Show success immediately — the link has been handed off to the server.
   // Content extraction runs asynchronously; no need to wait for it here.
-  const message = tags && tags.length > 0
-    ? t('flyout_articleAddedWithTags', [tags.join(', ')])
-    : t('flyout_addedToReadingList');
+  let message;
+  if (failedTags.length > 0) {
+    message = t('flyout_articleAddedTagsFailed', [failedTags.join(', ')]);
+  } else if (tags && tags.length > 0) {
+    message = t('flyout_articleAddedWithTags', [tags.join(', ')]);
+  } else {
+    message = t('flyout_addedToReadingList');
+  }
   await injectFlyout(tabId, message, 'success');
 }
 
 // ─── Flyout injection ─────────────────────────────────────────────────────────
 //
 // Injects a small toast into the current page via browser.scripting.
-// Falls back to a browser notification on privileged pages (about:*, etc.).
+// Falls back to a browser notification on privileged pages (about:*, etc.)
+// and on documents where the toast cannot be rendered.
 
 async function injectFlyout(tabId, message, state) {
   if (tabId == null) { await fallbackNotify(state, message); return; }
@@ -564,131 +653,161 @@ async function injectFlyout(tabId, message, state) {
   const logoUrl = await getLogoDataUrl();
 
   try {
-    await browser.scripting.executeScript({
+    const results = await browser.scripting.executeScript({
       target: { tabId },
       func:   renderFlyout,
       args:   [message, state, logoUrl],
     });
+    if (results?.[0]?.result !== true) await fallbackNotify(state, message);
   } catch {
     // Scripting blocked (privileged page, pdf viewer, etc.)
     await fallbackNotify(state, message);
   }
 }
 
-// This function runs INSIDE the page context — must be fully self-contained.
+// This function runs INSIDE the page context — it must be fully
+// self-contained. The toast lives in a closed shadow root so page CSS cannot
+// restyle it and page scripts cannot reach into it. Returns true when the
+// toast was rendered.
 function renderFlyout(message, state, logoUrl) {
-  const ID      = '__merlin_ext_flyout__';
-  const STYLE_ID = '__merlin_ext_styles__';
+  const HOST_ID = '__merlin_ext_flyout_host__';
+  const XHTML   = 'http://www.w3.org/1999/xhtml';
+  const root    = document.documentElement;
+  if (!root) return false;
 
-  // Inject keyframe animation once
-  if (!document.getElementById(STYLE_ID)) {
-    const s = document.createElement('style');
-    s.id = STYLE_ID;
-    s.textContent = `
-      @keyframes __merlin_spin { to { transform: rotate(360deg); } }
-      @keyframes __merlin_in   { from { opacity:0; transform:translateY(-10px) } to { opacity:1; transform:translateY(0) } }
+  const el = (tag) => document.createElementNS(XHTML, tag);
+
+  let host = document.getElementById(HOST_ID);
+  // The shadow root reference is stored as an expando on the host. Expandos
+  // set from the extension's isolated world are not visible to page scripts.
+  let shadow = host?.__merlinShadow;
+  if (!host || !shadow) {
+    host?.remove();
+    // A custom element name keeps generic page selectors like `div { … }` off
+    // the host, and !important inline declarations win over any remaining
+    // page rules (inline beats stylesheets at equal importance).
+    host = el('merlin-toast');
+    host.id = HOST_ID;
+    host.style.cssText = [
+      'all: initial',
+      'display: block',
+      'position: fixed',
+      'top: 24px',
+      'right: 24px',
+      'z-index: 2147483647',
+      'visibility: visible',
+      'opacity: 1',
+    ].map(rule => `${rule} !important`).join('; ');
+    try {
+      shadow = host.attachShadow({ mode: 'closed' });
+    } catch {
+      return false;
+    }
+    host.__merlinShadow = shadow;
+
+    const style = el('style');
+    style.textContent = `
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes slide-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+      .flyout {
+        display: flex; align-items: center; gap: 11px;
+        background: #fff; border: 1px solid #e0e4ea; border-radius: 13px;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+        padding: 13px 16px; min-width: 230px; max-width: 340px; box-sizing: border-box;
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        animation: slide-in 0.2s ease both;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      .flyout.hiding { opacity: 0; transform: translateY(-10px); }
+      .logo { flex-shrink: 0; position: relative; width: 50px; height: 50px; }
+      .logo img { width: 50px; height: 50px; border-radius: 10px; display: block; }
+      .badge {
+        position: absolute; bottom: -4px; right: -4px; background: #fff;
+        border-radius: 50%; width: 20px; height: 20px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+        font-size: 12px; font-weight: 700; line-height: 1;
+      }
+      .badge.success { color: #256029; }
+      .badge.error   { color: #9b1c1c; }
+      .spinner {
+        width: 12px; height: 12px; box-sizing: border-box;
+        border: 2px solid #0082c9; border-top-color: transparent;
+        border-radius: 50%; animation: spin 0.75s linear infinite;
+      }
+      .text { flex: 1; min-width: 0; }
+      .label {
+        font-weight: 700; color: #0082c9; font-size: 12px;
+        letter-spacing: .03em; text-transform: uppercase; margin-bottom: 2px;
+      }
+      .message { color: #444; overflow: hidden; text-overflow: ellipsis; }
     `;
-    document.head.appendChild(s);
+    shadow.appendChild(style);
+    root.appendChild(host);
   }
 
-  let flyout = document.getElementById(ID);
-  if (!flyout) {
-    flyout = document.createElement('div');
-    flyout.id = ID;
-    Object.assign(flyout.style, {
-      position:      'fixed',
-      top:           '24px',
-      right:         '24px',
-      zIndex:        '2147483647',
-      display:       'flex',
-      alignItems:    'center',
-      gap:           '11px',
-      background:    '#fff',
-      border:        '1px solid #e0e4ea',
-      borderRadius:  '13px',
-      boxShadow:     '0 6px 24px rgba(0,0,0,0.13)',
-      padding:       '13px 16px',
-      minWidth:      '230px',
-      maxWidth:      '340px',
-      fontFamily:    "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
-      fontSize:      '13px',
-      lineHeight:    '1.4',
-      animation:     '__merlin_in 0.2s ease both',
-      transition:    'opacity 0.25s ease, transform 0.25s ease',
-    });
-    document.body.appendChild(flyout);
+  // Remove the previous toast (and its auto-hide timer) when updating
+  const previous = shadow.querySelector('.flyout');
+  if (previous) {
+    clearTimeout(previous.__hideTimer);
+    previous.remove();
   }
 
-  // Clear auto-hide timer if updating
-  clearTimeout(flyout.__hideTimer);
+  // Build the content via the DOM API (no innerHTML with dynamic values)
+  const flyout = el('div');
+  flyout.className = 'flyout';
+  flyout.setAttribute('role', 'status');
 
-  // Build flyout content via DOM API (avoids unsafe innerHTML with dynamic values)
-  flyout.replaceChildren();
+  const logo = el('div');
+  logo.className = 'logo';
+  if (logoUrl) {
+    const img = el('img');
+    img.alt = 'Merlin';
+    // A strict img-src CSP on the page can block the data: URL — then just
+    // hide the image instead of showing a broken-image icon.
+    img.addEventListener('error', () => { img.style.visibility = 'hidden'; });
+    img.src = logoUrl;
+    logo.appendChild(img);
+  }
 
-  // Left column: logo + state badge
-  const logoWrap = Object.assign(document.createElement('div'), {});
-  Object.assign(logoWrap.style, { flexShrink:'0', position:'relative', width:'50px', height:'50px' });
-
-  const img = document.createElement('img');
-  img.src = logoUrl;
-  img.alt = 'Merlin';
-  Object.assign(img.style, { width:'50px', height:'50px', borderRadius:'10px', display:'block' });
-  logoWrap.appendChild(img);
-
-  const badgeWrap = document.createElement('div');
-  Object.assign(badgeWrap.style, {
-    position:'absolute', bottom:'-4px', right:'-4px', background:'#fff',
-    borderRadius:'50%', width:'20px', height:'20px',
-    display:'flex', alignItems:'center', justifyContent:'center',
-    boxShadow:'0 1px 4px rgba(0,0,0,0.18)',
-  });
-
-  const badgeEl = document.createElement('div');
+  const badge = el('div');
+  badge.className = `badge ${state}`;
   if (state === 'success') {
-    badgeEl.textContent = '✓';
-    Object.assign(badgeEl.style, { color:'#256029', fontSize:'12px', fontWeight:'700', lineHeight:'1' });
+    badge.textContent = '✓';
   } else if (state === 'error') {
-    badgeEl.textContent = '✕';
-    Object.assign(badgeEl.style, { color:'#9b1c1c', fontSize:'12px', fontWeight:'700', lineHeight:'1' });
+    badge.textContent = '✕';
   } else {
-    // loading spinner
-    Object.assign(badgeEl.style, {
-      width:'12px', height:'12px',
-      border:'2px solid #0082c9', borderTopColor:'transparent',
-      borderRadius:'50%', animation:'__merlin_spin 0.75s linear infinite',
-    });
+    const spinner = el('div');
+    spinner.className = 'spinner';
+    badge.appendChild(spinner);
   }
-  badgeWrap.appendChild(badgeEl);
-  logoWrap.appendChild(badgeWrap);
-  flyout.appendChild(logoWrap);
+  logo.appendChild(badge);
+  flyout.appendChild(logo);
 
-  // Right column: label + message
-  const textCol = document.createElement('div');
-  Object.assign(textCol.style, { flex:'1', minWidth:'0' });
-
-  const label = document.createElement('div');
+  const text = el('div');
+  text.className = 'text';
+  const label = el('div');
+  label.className = 'label';
   label.textContent = 'Merlin';
-  Object.assign(label.style, {
-    fontWeight:'700', color:'#0082c9', fontSize:'12px',
-    letterSpacing:'.03em', textTransform:'uppercase', marginBottom:'2px',
-  });
-  textCol.appendChild(label);
-
-  const msgEl = document.createElement('div');
+  const msgEl = el('div');
+  msgEl.className = 'message';
   msgEl.textContent = message;
-  Object.assign(msgEl.style, { color:'#444', overflow:'hidden', textOverflow:'ellipsis' });
-  textCol.appendChild(msgEl);
+  text.append(label, msgEl);
+  flyout.appendChild(text);
 
-  flyout.appendChild(textCol);
+  shadow.appendChild(flyout);
 
   // Auto-dismiss after 3.5 s for finished states
   if (state !== 'loading') {
     flyout.__hideTimer = setTimeout(() => {
-      flyout.style.opacity   = '0';
-      flyout.style.transform = 'translateY(-10px)';
-      setTimeout(() => flyout.remove(), 280);
+      flyout.classList.add('hiding');
+      setTimeout(() => {
+        flyout.remove();
+        if (!shadow.querySelector('.flyout')) host.remove();
+      }, 280);
     }, 3500);
   }
+  return true;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -699,30 +818,5 @@ function fallbackNotify(state, message) {
     error:   t('notification_errorTitle'),
     loading: t('notification_loadingTitle'),
   };
-  return browser.notifications.create({
-    type:    'basic',
-    iconUrl: browser.runtime.getURL('icons/icon-48.png'),
-    title:   titles[state] ?? t('notification_defaultTitle'),
-    message,
-  });
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// ─── Auth failure handling ──────────────────────────────────────────────────────
-//
-// Bei HTTP 401 ist das App-Passwort tot (widerrufen/abgelaufen). Wir löschen die
-// Credentials sofort, damit der Nutzer nicht mit einem ungültigen Passwort
-// weiterläuft, und zeigen eine Notification, da das Hintergrundskript sonst
-// unsichtbar bleibt.
-async function handleAuthFailure() {
-  await clearCredentials();
-  await browser.notifications.create({
-    type:    'basic',
-    iconUrl: browser.runtime.getURL('icons/icon-48.png'),
-    title:   t('notification_defaultTitle'),
-    message: t('notification_authFailedMessage'),
-  });
+  return showNotification(titles[state] ?? t('notification_defaultTitle'), message);
 }

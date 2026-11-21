@@ -4,7 +4,7 @@ All notable changes to Merlin for Firefox are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning based on
 [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.3.0] - 2026-11-21
 
 ### Added
 - Nested tags (merlin-nextcloud): the "save with tags" dialog lists existing
@@ -20,7 +20,43 @@ All notable changes to Merlin for Firefox are documented here. Format based on
   dimmed, for context. Picking a tag from the filtered list replaces the typed
   fragment, so it isn't saved as an extra new tag.
 
-## [1.2.2] - 2026-00-27
+### Changed
+- `data_collection_permissions` now declares `browsingActivity` and `websiteContent`
+  instead of `none`, matching what a save actually sends to the configured server
+- Requires Firefox 140 (`strict_min_version`), the first version with built-in data
+  collection consent
+- Dropped the `tabs` permission (not needed; `activeTab` covers the context-menu tab)
+- Page HTML is only sent up to 10 MB; larger pages are saved by URL only
+- A single HTTP 401 no longer logs you out on every synced device; credentials are
+  cleared after the second consecutive 401
+
+### Fixed
+- Standalone server: tags that could not be resolved or created are now reported
+  instead of showing a plain success message, and tags are no longer re-created as
+  duplicates when the tag list fails to load
+- Saving now times out after 60 s (tag requests after 10 s) instead of leaving the
+  loading toast up forever
+- Login Flow polling survives Firefox suspending the background page and no longer
+  leaves the settings page stuck on "complete login" after a timeout
+- Several tag dialogs can be open at once without overwriting each other; closing a
+  dialog with the window's close button cleans up its pending entry
+
+### Security
+- `http://` server URLs are rejected (except `localhost`), so credentials and page
+  content are never sent unencrypted
+- Login Flow responses are validated: the poll endpoint must be on the entered
+  server, the login page must use `https://`, and the returned credentials must be
+  present
+- The pending tag-dialog entry no longer stores a copy of the app password
+- The in-page toast now lives in a closed shadow root, so page CSS can no longer
+  hide or restyle it and page scripts cannot read it
+
+### Internal
+- Shared helpers (credentials, URL checks, tag API, notifications) moved to `common.js`
+- Context-menu items are only created on install/update; they persist across restarts
+- Code comments are now consistently in English
+
+## [1.2.2] - 2026-09-27
 
 ### Added
 - Added detection of unsupported domains. When an article of such a domain is added

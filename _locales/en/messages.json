@@ -24,13 +24,21 @@
     "message": "Save any link to your Merlin app with a single right-click."
   },
   "extName": {
-    "message": "Merlin reading list"
+    "message": "Merlin"
   },
   "flyout_addedToReadingList": {
     "message": "Added to your reading list."
   },
   "flyout_articleAdded": {
     "message": "Article added"
+  },
+  "flyout_articleAddedTagsFailed": {
+    "message": "Article added, but these tags could not be applied: $tags$",
+    "placeholders": {
+      "tags": {
+        "content": "$1"
+      }
+    }
   },
   "flyout_articleAddedWithTags": {
     "message": "Article added [$tags$]",
@@ -43,6 +51,9 @@
   "flyout_authFailed": {
     "message": "Authentication failed — check your app password."
   },
+  "flyout_authFailedRetry": {
+    "message": "Login rejected by the server. If this happens again, you will be logged out."
+  },
   "flyout_connectionFailed": {
     "message": "Connection failed: $error$",
     "placeholders": {
@@ -50,6 +61,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_httpBlocked": {
+    "message": "Your server URL uses unencrypted http://. Please switch to https:// in the settings."
   },
   "flyout_saving": {
     "message": "Saving to Merlin…"
@@ -61,6 +75,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_timeout": {
+    "message": "The server did not respond in time."
   },
   "flyout_unsupportedSite": {
     "message": "Not supported: $domain$ doesn't provide readable article text.",
@@ -101,6 +118,12 @@
         "content": "$1"
       }
     }
+  },
+  "options_backendNextcloud": {
+    "message": "Nextcloud"
+  },
+  "options_backendStandalone": {
+    "message": "Standalone server"
   },
   "options_cancelLogin": {
     "message": "Cancel login…"
@@ -164,6 +187,9 @@
   "options_headerSubtitleExtension": {
     "message": "Merlin Extension Settings"
   },
+  "options_httpBlocked": {
+    "message": "Unencrypted http:// is only allowed for localhost. Please use https://."
+  },
   "options_httpWarning": {
     "message": "Warning: this URL uses http:// — your app password will be sent unencrypted. Use https:// if possible."
   },
@@ -181,6 +207,9 @@
   "options_loggedOutWelcome": {
     "message": "Logged out. Enter your URL and click \"Login with Nextcloud\" to get started."
   },
+  "options_loggedOutWelcomeStandalone": {
+    "message": "Logged out. Enter your server URL and click \"Log in\" to get started."
+  },
   "options_loginButton": {
     "message": "Login with Nextcloud"
   },
@@ -192,6 +221,9 @@
   },
   "options_loginFirst": {
     "message": "Please log in first."
+  },
+  "options_loginInvalidResponse": {
+    "message": "The server sent an invalid login response."
   },
   "options_loginTimeout": {
     "message": "Login timed out after 5 minutes. Please try again."
@@ -278,8 +310,14 @@
   "options_urlSaved": {
     "message": "URL saved. Use \"Login with Nextcloud\" to authenticate."
   },
+  "options_urlSavedStandalone": {
+    "message": "URL saved. Use \"Log in\" to authenticate."
+  },
   "options_welcome": {
     "message": "Welcome! Enter your URL and click \"Login with Nextcloud\" to get started."
+  },
+  "options_welcomeStandalone": {
+    "message": "Welcome! Enter your server URL and click \"Log in\" to get started."
   },
   "passphrase_activeHint": {
     "message": "Encrypted sync is active."
@@ -355,6 +393,9 @@
   },
   "saveDialog_authFailed": {
     "message": "Authentication failed — please log in again"
+  },
+  "saveDialog_authFailedRetry": {
+    "message": "Login rejected by the server. If this happens again, you will be logged out."
   },
   "saveDialog_cancel": {
     "message": "Cancel"

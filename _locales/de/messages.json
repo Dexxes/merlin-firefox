@@ -12,7 +12,7 @@
     "message": "Mail an Merlin senden"
   },
   "contextMenu_savePage": {
-    "message": "HTML an Merlin senden"
+    "message": "Seite in Merlin speichern"
   },
   "contextMenu_savePageWithTags": {
     "message": "Seite mit Tags speichern…"
@@ -32,6 +32,14 @@
   "flyout_articleAdded": {
     "message": "Artikel gespeichert"
   },
+  "flyout_articleAddedTagsFailed": {
+    "message": "Artikel hinzugefügt, aber diese Tags konnten nicht gesetzt werden: $tags$",
+    "placeholders": {
+      "tags": {
+        "content": "$1"
+      }
+    }
+  },
   "flyout_articleAddedWithTags": {
     "message": "Artikel gespeichert mit [$tags$]",
     "placeholders": {
@@ -43,6 +51,9 @@
   "flyout_authFailed": {
     "message": "Authentifizierung fehlgeschlagen — App-Passwort prüfen."
   },
+  "flyout_authFailedRetry": {
+    "message": "Anmeldung vom Server abgelehnt. Passiert das erneut, wirst du abgemeldet."
+  },
   "flyout_connectionFailed": {
     "message": "Verbindung fehlgeschlagen: $error$",
     "placeholders": {
@@ -50,6 +61,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_httpBlocked": {
+    "message": "Deine Server-URL nutzt unverschlüsseltes http://. Bitte in den Einstellungen auf https:// umstellen."
   },
   "flyout_saving": {
     "message": "Wird an Merlin geschickt…"
@@ -61,6 +75,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_timeout": {
+    "message": "Der Server hat nicht rechtzeitig geantwortet."
   },
   "flyout_unsupportedSite": {
     "message": "Nicht unterstützt: $domain$ liefert keinen lesbaren Artikeltext.",
@@ -83,7 +100,7 @@
     "message": "Merlin"
   },
   "notification_errorTitle": {
-    "message": "Fehler"
+    "message": "Merlin: Fehler"
   },
   "notification_loadingTitle": {
     "message": "Merlin…"
@@ -92,7 +109,7 @@
     "message": "Merlin braucht eine Berechtigung für diesen Server — bitte in den Einstellungen erneut einloggen."
   },
   "notification_savedTitle": {
-    "message": "Merlin"
+    "message": "Merlin: Gespeichert ✓"
   },
   "notification_unsupportedSiteMessage": {
     "message": "Merlin: Diese Seite wird nicht unterstützt ($domain$)",
@@ -101,6 +118,12 @@
         "content": "$1"
       }
     }
+  },
+  "options_backendNextcloud": {
+    "message": "Nextcloud"
+  },
+  "options_backendStandalone": {
+    "message": "Standalone-Server"
   },
   "options_cancelLogin": {
     "message": "Anmeldung abbrechen…"
@@ -114,7 +137,7 @@
     }
   },
   "options_cannotReach": {
-    "message": "Nextcloud nicht erreichbar: $error$",
+    "message": "Server nicht erreichbar: $error$",
     "placeholders": {
       "error": {
         "content": "$1"
@@ -133,7 +156,7 @@
     "message": "Tab schließen"
   },
   "options_completeLogin": {
-    "message": "Schließe die Nextcloud-Anmeldung im neuen Tab ab…"
+    "message": "Schließe die Anmeldung im neuen Tab ab…"
   },
   "options_connecting": {
     "message": "Verbinde mit Nextcloud…"
@@ -153,16 +176,19 @@
     "message": "Verbindung getrennt. Bitte erneut einloggen."
   },
   "options_enterUrlFirst": {
-    "message": "Bitte zuerst deine Nextcloud-URL eingeben."
+    "message": "Bitte zuerst deine URL eingeben."
   },
   "options_enterUrlPlain": {
-    "message": "Bitte gib deine Nextcloud-URL ein."
+    "message": "Bitte gib deine URL ein."
   },
   "options_headerSubtitle": {
     "message": "Add-on-Einstellungen"
   },
   "options_headerSubtitleExtension": {
     "message": "Nextcloud-Erweiterungs-Einstellungen"
+  },
+  "options_httpBlocked": {
+    "message": "Unverschlüsseltes http:// ist nur für localhost erlaubt. Bitte https:// verwenden."
   },
   "options_httpWarning": {
     "message": "Achtung: Diese URL nutzt http:// — dein App-Passwort wird unverschlüsselt übertragen. Nutze wenn möglich https://."
@@ -181,6 +207,9 @@
   "options_loggedOutWelcome": {
     "message": "Abgemeldet. Gib deine Nextcloud-URL ein und klicke auf „Mit Nextcloud anmelden“, um loszulegen."
   },
+  "options_loggedOutWelcomeStandalone": {
+    "message": "Abgemeldet. Gib deine Server-URL ein und klicke auf „Anmelden“, um loszulegen."
+  },
   "options_loginButton": {
     "message": "Mit Nextcloud anmelden"
   },
@@ -192,6 +221,9 @@
   },
   "options_loginFirst": {
     "message": "Bitte zuerst mit Nextcloud anmelden."
+  },
+  "options_loginInvalidResponse": {
+    "message": "Der Server hat eine ungültige Login-Antwort geschickt."
   },
   "options_loginTimeout": {
     "message": "Anmeldung nach 5 Minuten abgelaufen. Bitte erneut versuchen."
@@ -261,13 +293,13 @@
     "message": "Teste…"
   },
   "options_urlHint": {
-    "message": "Die Basis-URL deiner Nextcloud-Instanz — HTTPS ist erforderlich und wird automatisch ergänzt (kein abschließender Schrägstrich nötig)"
+    "message": "Die Basis-URL deiner Merlin-Instanz – entweder eine Nextcloud oder ein Standalone-Server"
   },
   "options_urlHintShort": {
     "message": "Die Basis-URL deiner Nextcloud-Instanz (kein abschließender Schrägstrich nötig)"
   },
   "options_urlLabel": {
-    "message": "Nextcloud-URL"
+    "message": "URL deiner Merlin-Instanz"
   },
   "options_urlPlaceholder": {
     "message": "cloud.beispiel.de"
@@ -278,8 +310,14 @@
   "options_urlSaved": {
     "message": "URL gespeichert. Nutze „Mit Nextcloud anmelden“, um dich zu authentifizieren."
   },
+  "options_urlSavedStandalone": {
+    "message": "URL gespeichert. Nutze „Anmelden“, um dich zu authentifizieren."
+  },
   "options_welcome": {
     "message": "Willkommen! Gib deine Nextcloud-URL ein und klicke auf „Mit Nextcloud anmelden“, um loszulegen."
+  },
+  "options_welcomeStandalone": {
+    "message": "Willkommen! Gib deine Server-URL ein und klicke auf „Anmelden“, um loszulegen."
   },
   "passphrase_activeHint": {
     "message": "Verschlüsselter Sync ist aktiv."
@@ -355,6 +393,9 @@
   },
   "saveDialog_authFailed": {
     "message": "Anmeldung fehlgeschlagen — bitte erneut einloggen"
+  },
+  "saveDialog_authFailedRetry": {
+    "message": "Anmeldung vom Server abgelehnt. Passiert das erneut, wirst du abgemeldet."
   },
   "saveDialog_cancel": {
     "message": "Abbrechen"

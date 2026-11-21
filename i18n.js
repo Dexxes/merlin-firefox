@@ -1,17 +1,24 @@
 'use strict';
 
-// ─── Statische Seiten-Lokalisierung via browser.i18n ─────────────────────────
+// ─── Static page localization via browser.i18n ────────────────────────────────
 //
-// browser.i18n ersetzt in HTML keine __MSG_*__-Platzhalter automatisch (das
-// passiert nur in manifest.json und CSS). Für Erweiterungsseiten füllen wir
-// die Texte daher zur Laufzeit: Elemente markieren ihren Message-Namen über
-// data-i18n / data-i18n-placeholder / data-i18n-title, diese Funktion trägt
-// die übersetzten Strings ein. Die Message-Namen entsprechen den Keys aus
-// _locales/<lang>/messages.json (generiert aus localization/strings/*.json,
-// siehe tools/i18n/export.py — niemals direkt editieren).
+// browser.i18n does not replace __MSG_*__ placeholders in HTML (only in
+// manifest.json and CSS). Extension pages therefore fill in their texts at
+// runtime: elements name their message via data-i18n / data-i18n-placeholder /
+// data-i18n-title, and this function inserts the translated strings.
+//
+// The message names are the keys of _locales/<lang>/messages.json. Those
+// files are generated from the merlin-translations repository
+// (https://github.com/Dexxes/merlin-translations, webext.* namespace) with
+// `python3 export.py --platform webext` — never edit them by hand. See
+// "Localization" in README.md.
 
 function localizePage() {
   const msg = (key) => browser.i18n.getMessage(key);
+
+  // Match the document language to the UI language actually used, so screen
+  // readers and hyphenation pick the right language.
+  document.documentElement.lang = browser.i18n.getUILanguage();
 
   document.querySelectorAll('[data-i18n]').forEach((el) => {
     const text = msg(el.dataset.i18n);
@@ -23,7 +30,7 @@ function localizePage() {
     if (text) el.placeholder = text;
   });
 
-  // Seitentitel: data-i18n-title am <html>-Element.
+  // Page title: data-i18n-title on the <html> element.
   const titleKey = document.documentElement.dataset.i18nTitle;
   if (titleKey) {
     const text = msg(titleKey);

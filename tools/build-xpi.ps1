@@ -38,6 +38,7 @@ if (-not $version) { throw "manifest.json has no 'version' field" }
 # LICENCE, tools/, build/, .git*) is excluded.
 $includeFiles = @(
     'manifest.json',
+    'common.js',
     'background.js',
     'i18n.js',
     'options.html',
