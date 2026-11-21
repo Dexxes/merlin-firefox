@@ -73,6 +73,21 @@ server — this is expected and only needs to be granted once.
   encryption layer is needed (unlike `merlin-chrome`/`merlin-thunderbird`, which lack an
   equivalent E2E-encrypted sync channel).
 
+## Localization
+
+`_locales/<lang>/messages.json` is generated, not edited by hand. The source strings
+live in [`merlin-translations`](https://github.com/Dexxes/merlin-translations) under
+the `webext.*` namespace of `en.json` / `de.json`. To change a text, edit it there and
+regenerate with:
+
+```sh
+# with merlin-translations and merlin-firefox checked out side by side
+python3 merlin-translations/export.py --platform webext
+```
+
+The `_locales` files are shared with the Chrome and Thunderbird extensions, so they
+contain some messages this extension does not use.
+
 ## Data handling
 
 The extension declares `browsingActivity` and `websiteContent` in

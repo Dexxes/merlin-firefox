@@ -34,8 +34,15 @@ All notable changes to Merlin for Firefox are documented here. Format based on
   server, the login page must use `https://`, and the returned credentials must be
   present
 - The pending tag-dialog entry no longer stores a copy of the app password
+- The in-page toast now lives in a closed shadow root, so page CSS can no longer
+  hide or restyle it and page scripts cannot read it
 
-## [1.2.2] - 2026-00-27
+### Internal
+- Shared helpers (credentials, URL checks, tag API, notifications) moved to `common.js`
+- Context-menu items are only created on install/update; they persist across restarts
+- Code comments are now consistently in English
+
+## [1.2.2] - 2026-09-27
 
 ### Added
 - Added detection of unsupported domains. When an article of such a domain is added

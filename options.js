@@ -5,7 +5,13 @@
 const $ = id => document.getElementById(id);
 
 // t, sleep, getCredentials, setCredentials, clearCredentials,
-// originPatternFor, sameOrigin und isAllowedServerUrl kommen aus common.js.
+// originPatternFor, sameOrigin, serverBase and isAllowedServerUrl come from
+// common.js.
+
+// The URL as typed, trimmed and without a trailing slash.
+function readServerUrl() {
+  return serverBase($('nextcloudUrl').value.trim());
+}
 
 function showCloseButton() {
   const existing = $('closeTabBtn');
@@ -38,22 +44,21 @@ function showStatus(message, type /* 'success' | 'error' | 'info' */, durationMs
 
 // ─── Runtime host permission for the user's server ───────────────────────────
 //
-// host_permissions ist nur optional (manifest.json) statt pauschal
-// <all_urls> — die Erweiterung fragt genau die Origin an, die der Nutzer als
-// Server konfiguriert. Das funktioniert hier, weil der Request innerhalb
-// eines Button-Klicks (User-Geste) ausgelöst wird.
+// host_permissions are only optional (manifest.json) instead of a standing
+// <all_urls> grant — the extension requests exactly the origin the user
+// configures as their server. This works here because the request is made
+// from within a button click (user gesture).
 //
-// backendKind: 'nextcloud' (Default) oder 'standalone' (merlin-server).
+// backendKind: 'nextcloud' (default) or 'standalone' (merlin-server).
 
 async function ensureHostPermission(url) {
   const origin = originPatternFor(url);
   if (!origin) return false;
-  // Kein vorheriger permissions.contains()-Check: request() löst bei bereits
-  // erteilter Berechtigung ohnehin sofort auf, ohne Prompt. Ein await davor
-  // würde die User-Geste des Klicks kappen — Firefox verlangt für
-  // permissions.request() eine ununterbrochene Geste direkt aus dem
-  // Event-Handler, sonst "permissions.request may only be called from a user
-  // input handler" (siehe auch background.js-Kommentar zum selben Thema).
+  // No permissions.contains() pre-check: request() resolves immediately
+  // without a prompt when the permission is already granted. An await before
+  // it would break the click's user gesture — Firefox requires an
+  // uninterrupted gesture for permissions.request(), otherwise it throws
+  // "permissions.request may only be called from a user input handler".
   return browser.permissions.request({ origins: [origin] });
 }
 
@@ -80,14 +85,23 @@ function loginButtonLabel() {
   return selectedBackendKind() === 'standalone' ? t('options_loginButtonStandalone') : t('options_loginButton');
 }
 
+function setLoginButtonText(text) {
+  $('loginFlowBtn').querySelector('span').textContent = text;
+}
+
 function updateLoginButtonLabel() {
   if (_lfActive) return; // don't clobber the "Cancel login…" label mid-flow
-  $('loginFlowBtn').querySelector('span').textContent = loginButtonLabel();
+  setLoginButtonText(loginButtonLabel());
+}
+
+// Marks a login flow as running (button becomes "Cancel login…") or as idle.
+function setLoginFlowActive(active) {
+  _lfActive = active;
+  setLoginButtonText(active ? t('options_cancelLogin') : loginButtonLabel());
 }
 
 function _lfReset() {
-  _lfActive = false;
-  $('loginFlowBtn').querySelector('span').textContent = loginButtonLabel();
+  setLoginFlowActive(false);
 }
 
 function cancelLoginFlow() {
@@ -101,15 +115,15 @@ async function startLoginFlow() {
   // Toggle: clicking the button again cancels an in-progress flow
   if (_lfActive) { cancelLoginFlow(); return; }
 
-  const url = $('nextcloudUrl').value.trim().replace(/\/$/, '');
+  const url = readServerUrl();
   if (!url) {
     showStatus(t('options_enterUrlFirst'), 'error');
     $('nextcloudUrl').focus();
     return;
   }
 
-  // Unverschlüsseltes http:// nur für localhost (lokale Entwicklung). Die
-  // Prüfung ist synchron und kappt daher die User-Geste nicht.
+  // Plain http:// only for localhost (local development). The check is
+  // synchronous, so it does not break the user gesture.
   if (!isAllowedServerUrl(url)) {
     showStatus(t('options_httpBlocked'), 'error');
     $('nextcloudUrl').focus();
@@ -118,12 +132,11 @@ async function startLoginFlow() {
 
   const backendKind = selectedBackendKind();
 
-  _lfActive = true;
-  $('loginFlowBtn').querySelector('span').textContent = t('options_cancelLogin');
+  setLoginFlowActive(true);
 
   // ── Step 0: request access to this specific server only ────────────────────
-  // Direkt am Anfang, ohne vorherige awaits, damit der Request noch innerhalb
-  // der Klick-Geste ausgelöst wird.
+  // Right at the start, before any await, so the request still happens
+  // within the click gesture.
   if (!(await ensureHostPermission(url))) {
     _lfReset();
     showStatus(t('options_needsPermission'), 'error');
@@ -133,9 +146,9 @@ async function startLoginFlow() {
   showStatus(t('options_connecting'), 'info', 0);
 
   // ── Step 1: initiate ────────────────────────────────────────────────────────
-  // merlin-server bildet Nextclouds Login-Flow-v2-JSON identisch nach (siehe
-  // merlin-server/src/Controller/LoginFlowController.php) - nur die Start-URL
-  // unterscheidet sich, Polling/Parsing bleibt unverändert.
+  // merlin-server mirrors Nextcloud's Login Flow v2 JSON exactly (see
+  // merlin-server/src/Controller/LoginFlowController.php) — only the start
+  // URL differs, polling and parsing stay the same.
   let loginUrl, pollToken, pollEndpoint;
   try {
     const loginFlowPath = backendKind === 'standalone' ? '/login/v2' : '/index.php/login/v2';
@@ -155,9 +168,9 @@ async function startLoginFlow() {
   }
   if (!_lfActive) return;
 
-  // Antwort prüfen: Login-Seite nur verschlüsselt (bzw. localhost), und das
-  // Poll-Token darf nur an den eingegebenen Server zurückgehen — die Poll-
-  // Antwort enthält das neue App-Passwort.
+  // Validate the response: the login page must be encrypted (or localhost),
+  // and the poll token may only go back to the server the user entered —
+  // the poll response carries the new app password.
   if (typeof pollToken !== 'string' || !pollToken
       || !isAllowedServerUrl(loginUrl)
       || !isAllowedServerUrl(pollEndpoint) || !sameOrigin(pollEndpoint, url)) {
@@ -243,12 +256,11 @@ async function loadSettings() {
 
   // Restore in-progress UI state if the background is still polling
   const { _merlinLoginFlow } = await browser.storage.local.get('_merlinLoginFlow');
-  // Ein abgelaufener Flow (z. B. weil Firefox die Hintergrundseite beendet
-  // hat) zählt nicht mehr als aktiv; das Hintergrundskript räumt ihn beim
-  // nächsten Alarm selbst auf.
+  // An expired flow (e.g. because Firefox unloaded the background page) no
+  // longer counts as active; the background script cleans it up on its next
+  // alarm.
   if (_merlinLoginFlow?.active && Date.now() <= (_merlinLoginFlow.deadline ?? 0)) {
-    _lfActive = true;
-    $('loginFlowBtn').querySelector('span').textContent = t('options_cancelLogin');
+    setLoginFlowActive(true);
     showStatus(t('options_completeLogin'), 'info', 0);
   }
 }
@@ -256,7 +268,7 @@ async function loadSettings() {
 // ─── Save settings (URL only, before login) ──────────────────────────────────
 
 async function saveSettings() {
-  const url = $('nextcloudUrl').value.trim().replace(/\/$/, '');
+  const url = readServerUrl();
 
   if (!url) {
     showStatus(t('options_enterUrlPlain'), 'error');
@@ -288,7 +300,7 @@ function updateLogoutButton(hasCredentials) {
 async function logout() {
   await clearCredentials();
 
-  // UI zurück in den "nicht verbunden"-Zustand wie beim ersten Start
+  // Reset the UI to the "not connected" state of a first start
   $('nextcloudUrl').value = '';
   updateLogoutButton(false);
   showStatus(t('options_loggedOutWelcome'), 'info', 0);

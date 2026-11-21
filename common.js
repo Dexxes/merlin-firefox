@@ -45,6 +45,38 @@ function isAllowedServerUrl(url) {
   }
 }
 
+// ─── Server API helpers ───────────────────────────────────────────────────────
+
+function serverBase(url) {
+  return url.replace(/\/$/, '');
+}
+
+function basicAuthHeader(username, appPassword) {
+  return `Basic ${btoa(`${username}:${appPassword}`)}`;
+}
+
+// The tag list lives under a different prefix per backend: the Nextcloud app
+// serves it below /index.php/apps/merlin/api, merlin-server below /api.
+function tagsEndpoint(url, backendKind) {
+  const prefix = backendKind === 'standalone' ? '/api' : '/index.php/apps/merlin/api';
+  return `${serverBase(url)}${prefix}/tags`;
+}
+
+// The tag API may answer with a bare array or wrap it in { tags } / { data }.
+function normalizeTagList(data) {
+  if (Array.isArray(data)) return data;
+  return data?.tags ?? data?.data ?? [];
+}
+
+function showNotification(title, message) {
+  return browser.notifications.create({
+    type:    'basic',
+    iconUrl: browser.runtime.getURL('icons/icon-48.png'),
+    title,
+    message,
+  });
+}
+
 // ─── Credential storage ───────────────────────────────────────────────────────
 //
 // storage.sync is preferred: Firefox Sync encrypts it end-to-end per Firefox
@@ -95,12 +127,7 @@ async function recordAuthFailure() {
     return false;
   }
   await clearCredentials();
-  await browser.notifications.create({
-    type:    'basic',
-    iconUrl: browser.runtime.getURL('icons/icon-48.png'),
-    title:   t('notification_authFailedTitle'),
-    message: t('notification_authFailedMessage'),
-  });
+  await showNotification(t('notification_authFailedTitle'), t('notification_authFailedMessage'));
   return true;
 }
 

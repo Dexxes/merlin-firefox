@@ -2,10 +2,11 @@
 
 const $ = id => document.getElementById(id);
 
-// t, getCredentials und recordAuthFailure kommen aus common.js.
+// t, getCredentials, recordAuthFailure and the tag API helpers come from
+// common.js.
 
-// ID des Speichervorgangs, die das Hintergrundskript beim Öffnen des Dialogs
-// in die URL schreibt (save-dialog.html?id=…).
+// ID of this save, which the background script puts into the dialog's URL
+// (save-dialog.html?id=…).
 const saveId = new URLSearchParams(location.search).get('id') ?? '';
 
 // Tags selected via chips (independent from the text input)
@@ -87,7 +88,7 @@ async function loadExistingTags() {
   const spinner   = $('tagsSpinner');
   const chipsWrap = $('tagChips');
 
-  // Zugangsdaten frisch lesen statt sie im Pending-Save-Eintrag mitzuführen.
+  // Read credentials fresh instead of carrying them in the pending-save entry.
   const { nextcloudUrl, username, appPassword, backendKind } = await getCredentials();
   if (!nextcloudUrl || !username || !appPassword || !isAllowedServerUrl(nextcloudUrl)) {
     spinner.style.display = 'none';
@@ -95,22 +96,18 @@ async function loadExistingTags() {
     return;
   }
 
-  const apiPrefix = backendKind === 'standalone' ? '/api' : '/index.php/apps/merlin/api';
-  const apiUrl = `${nextcloudUrl.replace(/\/$/, '')}${apiPrefix}/tags`;
-  const creds  = btoa(`${username}:${appPassword}`);
-
   try {
-    const resp = await fetch(apiUrl, {
+    const resp = await fetch(tagsEndpoint(nextcloudUrl, backendKind), {
       method:  'GET',
-      headers: { 'Authorization': `Basic ${creds}` },
+      headers: { 'Authorization': basicAuthHeader(username, appPassword) },
       signal:  AbortSignal.timeout(8_000),
     });
 
     spinner.style.display = 'none';
 
     if (resp.status === 401) {
-      // Gleiche Regel wie beim Speichern: erst beim zweiten 401 in Folge
-      // werden die Zugangsdaten gelöscht (siehe recordAuthFailure in common.js).
+      // Same rule as when saving: credentials are only cleared on the second
+      // 401 in a row (see recordAuthFailure in common.js).
       const cleared = await recordAuthFailure();
       setChipsMessage(chipsWrap, 'tags-error', cleared ? t('saveDialog_authFailed') : t('saveDialog_authFailedRetry'));
       return;
@@ -121,10 +118,7 @@ async function loadExistingTags() {
       return;
     }
 
-    const data = await resp.json();
-
-    // API may return { tags: [...] } or directly an array
-    const tags = Array.isArray(data) ? data : (data.tags ?? data.data ?? []);
+    const tags = normalizeTagList(await resp.json());
 
     if (!tags.length) {
       setChipsMessage(chipsWrap, 'tags-empty', t('saveDialog_noTags'));
