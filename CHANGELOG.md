@@ -13,6 +13,8 @@ All notable changes to Merlin for Firefox are documented here. Format based on
   tag also deselects its sub-tags. Servers without nested tags show a flat list.
 - The "save with tags" window is taller (640 px) so the full tag list and the
   buttons fit below the browser's title and address bar.
+- The "save with tags" window opens centered on the screen (on multiple
+  monitors: the screen the browser window is on).
 - Typing in the tag field filters the existing tags by the tag currently being
   typed (the text after the last comma); parent tags of a match stay visible,
   dimmed, for context. Picking a tag from the filtered list replaces the typed
