@@ -32,6 +32,14 @@
   "flyout_articleAdded": {
     "message": "Article added"
   },
+  "flyout_articleAddedTagsFailed": {
+    "message": "Article added, but these tags could not be applied: $tags$",
+    "placeholders": {
+      "tags": {
+        "content": "$1"
+      }
+    }
+  },
   "flyout_articleAddedWithTags": {
     "message": "Article added [$tags$]",
     "placeholders": {
@@ -43,6 +51,9 @@
   "flyout_authFailed": {
     "message": "Authentication failed — check your app password."
   },
+  "flyout_authFailedRetry": {
+    "message": "Login rejected by the server. If this happens again, you will be logged out."
+  },
   "flyout_connectionFailed": {
     "message": "Connection failed: $error$",
     "placeholders": {
@@ -50,6 +61,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_httpBlocked": {
+    "message": "Your server URL uses unencrypted http://. Please switch to https:// in the settings."
   },
   "flyout_saving": {
     "message": "Saving to Merlin…"
@@ -61,6 +75,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_timeout": {
+    "message": "The server did not respond in time."
   },
   "flyout_unsupportedSite": {
     "message": "Not supported: $domain$ doesn't provide readable article text.",
@@ -164,6 +181,9 @@
   "options_headerSubtitleExtension": {
     "message": "Merlin Extension Settings"
   },
+  "options_httpBlocked": {
+    "message": "Unencrypted http:// is only allowed for localhost. Please use https://."
+  },
   "options_httpWarning": {
     "message": "Warning: this URL uses http:// — your app password will be sent unencrypted. Use https:// if possible."
   },
@@ -192,6 +212,9 @@
   },
   "options_loginFirst": {
     "message": "Please log in first."
+  },
+  "options_loginInvalidResponse": {
+    "message": "The server sent an invalid login response."
   },
   "options_loginTimeout": {
     "message": "Login timed out after 5 minutes. Please try again."
@@ -222,6 +245,9 @@
   },
   "options_securityLink": {
     "message": "Settings → Security → App passwords"
+  },
+  "options_sourceCodeLink": {
+    "message": "Source code on GitHub"
   },
   "options_testAuthFailed": {
     "message": "Authentication failed. Please log in again via \"Login with Nextcloud\"."
@@ -352,6 +378,9 @@
   },
   "saveDialog_authFailed": {
     "message": "Authentication failed — please log in again"
+  },
+  "saveDialog_authFailedRetry": {
+    "message": "Login rejected by the server. If this happens again, you will be logged out."
   },
   "saveDialog_cancel": {
     "message": "Cancel"

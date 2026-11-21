@@ -21,13 +21,14 @@ right-click context menu — no separate reader UI, just a fast, one-click save 
   infrastructure), with a `storage.local` fallback if no Firefox Account is signed in
 - Host access to your Merlin server is requested at runtime, scoped to that one origin —
   no standing `<all_urls>` permission
+- Server URLs must use `https://`; plain `http://` is only accepted for `localhost`
 - Animated in-page toast reports save progress/success/failure, with a desktop
   notification fallback on privileged pages (`about:*`, PDF viewer, etc.)
 - Localized UI (English, German)
 
 ## Requirements
 
-- Firefox 109 or later (Manifest V3)
+- Firefox 140 or later (Manifest V3, built-in data collection consent)
 - A reachable Merlin backend: either a Nextcloud instance with the
   [`merlin-nextcloud`](https://github.com/Dexxes/merlin-nextcloud/) app installed, or a
   [`merlin-standalone-server`](https://github.com/Dexxes/merlin-standalone-server) instance
@@ -52,6 +53,7 @@ server — this is expected and only needs to be granted once.
 | File | Purpose |
 |---|---|
 | `manifest.json` | Extension manifest (Manifest V3, optional host permissions) |
+| `common.js` | Shared helpers: i18n shorthand, credential storage, URL checks, 401 handling |
 | `background.js` | Context menu, save flow, tag resolution, Nextcloud Login Flow polling, in-page toast injection |
 | `options.html` / `options.js` | Settings UI: backend selection, login, URL storage |
 | `save-dialog.html` / `save-dialog.js` | Popup dialog for entering/selecting tags before saving |
@@ -70,6 +72,13 @@ server — this is expected and only needs to be granted once.
   encrypts it server-side end-to-end per Firefox Account, so no extension-local
   encryption layer is needed (unlike `merlin-chrome`/`merlin-thunderbird`, which lack an
   equivalent E2E-encrypted sync channel).
+
+## Data handling
+
+The extension declares `browsingActivity` and `websiteContent` in
+`data_collection_permissions`: when you save, it sends the URL (and for page saves the
+rendered HTML, up to 10 MB) to the Merlin server you configured. Nothing is sent
+anywhere else, and nothing is sent without a context-menu click.
 
 ## License
 

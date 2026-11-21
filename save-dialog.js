@@ -2,9 +2,11 @@
 
 const $ = id => document.getElementById(id);
 
-// i18n-Kürzel: liest lokalisierte Strings aus _locales/<lang>/messages.json
-// (generiert via tools/i18n/export.py). `subs` mappt auf die $1/$2-Platzhalter.
-const t = (key, subs) => browser.i18n.getMessage(key, subs);
+// t, getCredentials und recordAuthFailure kommen aus common.js.
+
+// ID des Speichervorgangs, die das Hintergrundskript beim Öffnen des Dialogs
+// in die URL schreibt (save-dialog.html?id=…).
+const saveId = new URLSearchParams(location.search).get('id') ?? '';
 
 // Tags selected via chips (independent from the text input)
 const selectedChipTags = new Set();
@@ -20,8 +22,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ─── Load pending save data ──────────────────────────────────────────────────
   let pendingSave = null;
   try {
-    const result = await browser.storage.local.get('_merlinPendingSave');
-    pendingSave = result._merlinPendingSave ?? null;
+    const key = `_merlinPendingSave_${saveId}`;
+    const result = await browser.storage.local.get(key);
+    pendingSave = result[key] ?? null;
   } catch { /* ignore */ }
 
   const url = pendingSave?.url ?? '';
@@ -32,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('tagsInput').focus();
 
   // ─── Load existing tags from API ────────────────────────────────────────────
-  loadExistingTags(pendingSave);
+  loadExistingTags();
 
   // ─── Save ────────────────────────────────────────────────────────────────────
   async function doSave() {
@@ -44,14 +47,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const tags = [...new Set([...selectedChipTags, ...inputTags])].slice(0, MAX_TAGS);
 
-    let windowId = null;
     try {
-      const win = await browser.windows.getCurrent();
-      windowId  = win.id;
-    } catch { /* window API not available */ }
-
-    try {
-      await browser.runtime.sendMessage({ type: 'merlin:saveWithTags', tags, windowId });
+      await browser.runtime.sendMessage({ type: 'merlin:saveWithTags', saveId, tags });
     } catch { /* background will handle errors */ }
 
     window.close();
@@ -59,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ─── Cancel ──────────────────────────────────────────────────────────────────
   function doCancel() {
-    browser.runtime.sendMessage({ type: 'merlin:cancelSave' }).catch(() => {});
+    browser.runtime.sendMessage({ type: 'merlin:cancelSave', saveId }).catch(() => {});
     window.close();
   }
 
@@ -86,17 +83,18 @@ function setChipsMessage(container, className, text) {
   container.replaceChildren(span);
 }
 
-async function loadExistingTags(pendingSave) {
+async function loadExistingTags() {
   const spinner   = $('tagsSpinner');
   const chipsWrap = $('tagChips');
 
-  if (!pendingSave?.nextcloudUrl || !pendingSave?.username || !pendingSave?.appPassword) {
+  // Zugangsdaten frisch lesen statt sie im Pending-Save-Eintrag mitzuführen.
+  const { nextcloudUrl, username, appPassword, backendKind } = await getCredentials();
+  if (!nextcloudUrl || !username || !appPassword || !isAllowedServerUrl(nextcloudUrl)) {
     spinner.style.display = 'none';
     setChipsMessage(chipsWrap, 'tags-empty', t('saveDialog_noCredentials'));
     return;
   }
 
-  const { nextcloudUrl, username, appPassword, backendKind } = pendingSave;
   const apiPrefix = backendKind === 'standalone' ? '/api' : '/index.php/apps/merlin/api';
   const apiUrl = `${nextcloudUrl.replace(/\/$/, '')}${apiPrefix}/tags`;
   const creds  = btoa(`${username}:${appPassword}`);
@@ -111,11 +109,10 @@ async function loadExistingTags(pendingSave) {
     spinner.style.display = 'none';
 
     if (resp.status === 401) {
-      // Zugangsdaten ungültig — löschen und Re-Login erzwingen, wie auch beim Speichern selbst.
-      await browser.storage.sync.remove(['nextcloudUrl', 'username', 'appPassword']).catch(() => {});
-      await browser.storage.local.remove(['nextcloudUrl', 'username', 'appPassword']);
-      await notifyAuthFailed();
-      setChipsMessage(chipsWrap, 'tags-error', t('saveDialog_authFailed'));
+      // Gleiche Regel wie beim Speichern: erst beim zweiten 401 in Folge
+      // werden die Zugangsdaten gelöscht (siehe recordAuthFailure in common.js).
+      const cleared = await recordAuthFailure();
+      setChipsMessage(chipsWrap, 'tags-error', cleared ? t('saveDialog_authFailed') : t('saveDialog_authFailedRetry'));
       return;
     }
 
@@ -145,17 +142,6 @@ async function loadExistingTags(pendingSave) {
       $('tagsSection').style.display = 'none';
     }
   }
-}
-
-// ─── Notification helper ───────────────────────────────────────────────────────
-
-function notifyAuthFailed() {
-  return browser.notifications.create({
-    type:    'basic',
-    iconUrl: browser.runtime.getURL('icons/icon-48.png'),
-    title:   t('notification_authFailedTitle'),
-    message: t('notification_authFailedMessage'),
-  });
 }
 
 // ─── Render clickable tag chips ───────────────────────────────────────────────

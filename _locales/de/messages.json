@@ -32,6 +32,14 @@
   "flyout_articleAdded": {
     "message": "Artikel gespeichert"
   },
+  "flyout_articleAddedTagsFailed": {
+    "message": "Artikel hinzugefügt, aber diese Tags konnten nicht gesetzt werden: $tags$",
+    "placeholders": {
+      "tags": {
+        "content": "$1"
+      }
+    }
+  },
   "flyout_articleAddedWithTags": {
     "message": "Artikel gespeichert mit [$tags$]",
     "placeholders": {
@@ -43,6 +51,9 @@
   "flyout_authFailed": {
     "message": "Authentifizierung fehlgeschlagen — App-Passwort prüfen."
   },
+  "flyout_authFailedRetry": {
+    "message": "Anmeldung vom Server abgelehnt. Passiert das erneut, wirst du abgemeldet."
+  },
   "flyout_connectionFailed": {
     "message": "Verbindung fehlgeschlagen: $error$",
     "placeholders": {
@@ -50,6 +61,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_httpBlocked": {
+    "message": "Deine Server-URL nutzt unverschlüsseltes http://. Bitte in den Einstellungen auf https:// umstellen."
   },
   "flyout_saving": {
     "message": "Wird an Merlin geschickt…"
@@ -61,6 +75,9 @@
         "content": "$1"
       }
     }
+  },
+  "flyout_timeout": {
+    "message": "Der Server hat nicht rechtzeitig geantwortet."
   },
   "flyout_unsupportedSite": {
     "message": "Nicht unterstützt: $domain$ liefert keinen lesbaren Artikeltext.",
@@ -164,6 +181,9 @@
   "options_headerSubtitleExtension": {
     "message": "Nextcloud-Erweiterungs-Einstellungen"
   },
+  "options_httpBlocked": {
+    "message": "Unverschlüsseltes http:// ist nur für localhost erlaubt. Bitte https:// verwenden."
+  },
   "options_httpWarning": {
     "message": "Achtung: Diese URL nutzt http:// — dein App-Passwort wird unverschlüsselt übertragen. Nutze wenn möglich https://."
   },
@@ -192,6 +212,9 @@
   },
   "options_loginFirst": {
     "message": "Bitte zuerst mit Nextcloud anmelden."
+  },
+  "options_loginInvalidResponse": {
+    "message": "Der Server hat eine ungültige Login-Antwort geschickt."
   },
   "options_loginTimeout": {
     "message": "Anmeldung nach 5 Minuten abgelaufen. Bitte erneut versuchen."
@@ -222,6 +245,9 @@
   },
   "options_securityLink": {
     "message": "Einstellungen → Sicherheit → App-Passwörter"
+  },
+  "options_sourceCodeLink": {
+    "message": "Quellcode auf GitHub"
   },
   "options_testAuthFailed": {
     "message": "Authentifizierung fehlgeschlagen. Bitte erneut über „Mit Nextcloud anmelden“ einloggen."
@@ -352,6 +378,9 @@
   },
   "saveDialog_authFailed": {
     "message": "Anmeldung fehlgeschlagen — bitte erneut einloggen"
+  },
+  "saveDialog_authFailedRetry": {
+    "message": "Anmeldung vom Server abgelehnt. Passiert das erneut, wirst du abgemeldet."
   },
   "saveDialog_cancel": {
     "message": "Abbrechen"

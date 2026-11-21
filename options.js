@@ -4,13 +4,8 @@
 
 const $ = id => document.getElementById(id);
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// i18n-Kürzel: liest lokalisierte Strings aus _locales/<lang>/messages.json
-// (generiert via tools/i18n/export.py). `subs` mappt auf die $1/$2-Platzhalter.
-const t = (key, subs) => browser.i18n.getMessage(key, subs);
+// t, sleep, getCredentials, setCredentials, clearCredentials,
+// originPatternFor, sameOrigin und isAllowedServerUrl kommen aus common.js.
 
 function showCloseButton() {
   const existing = $('closeTabBtn');
@@ -41,54 +36,14 @@ function showStatus(message, type /* 'success' | 'error' | 'info' */, durationMs
   }
 }
 
-// ─── Storage helpers ───────────────────────────────────────────────────────────
+// ─── Runtime host permission for the user's server ───────────────────────────
 //
-// storage.sync ist die bevorzugte Ablage: Mozilla verschlüsselt sie serverseitig
-// Ende-zu-Ende (Teil der Firefox-Sync-Infrastruktur, Schlüssel pro Firefox-Konto,
-// für Mozilla selbst nicht einsehbar). Das App-Passwort wird so automatisch und
-// geschützt auf alle Geräte verteilt — ohne eigene Passphrase. Ist storage.sync
-// nicht verfügbar (kein Firefox-Konto angemeldet), dient storage.local als
-// rein lokaler Fallback.
-
-// backendKind: 'nextcloud' (Default, Bestandsschutz für bereits verbundene
-// Installationen ohne gespeicherten Wert) oder 'standalone' (merlin-server).
-// Steuert API-URL-Präfix und Login-Flow-Start-URL, siehe saveToMerlin()/
-// startLoginFlow() weiter unten.
-async function getCredentials() {
-  try {
-    const synced = await browser.storage.sync.get(['nextcloudUrl', 'username', 'appPassword', 'backendKind']);
-    if (synced.nextcloudUrl || synced.username || synced.appPassword) return synced;
-  } catch { /* storage.sync evtl. nicht verfügbar */ }
-  return browser.storage.local.get(['nextcloudUrl', 'username', 'appPassword', 'backendKind']);
-}
-
-async function setCredentials(fields) {
-  try {
-    await browser.storage.sync.set(fields);
-  } catch {
-    await browser.storage.local.set(fields);
-  }
-}
-
-async function clearCredentials() {
-  try { await browser.storage.sync.remove(['nextcloudUrl', 'username', 'appPassword']); } catch { /* ignore */ }
-  await browser.storage.local.remove(['nextcloudUrl', 'username', 'appPassword']);
-}
-
-// ─── Runtime host permission for the user's Nextcloud server ─────────────────
+// host_permissions ist nur optional (manifest.json) statt pauschal
+// <all_urls> — die Erweiterung fragt genau die Origin an, die der Nutzer als
+// Server konfiguriert. Das funktioniert hier, weil der Request innerhalb
+// eines Button-Klicks (User-Geste) ausgelöst wird.
 //
-// host_permissions ist nur noch optional (manifest.json) statt pauschal
-// <all_urls> — die Erweiterung fragt stattdessen genau die Origin an, die der
-// Nutzer als Nextcloud-Server konfiguriert. Das funktioniert hier, weil der
-// Request innerhalb eines Button-Klicks (User-Geste) ausgelöst wird.
-function originPatternFor(url) {
-  try {
-    const u = new URL(url);
-    return `${u.protocol}//${u.host}/*`;
-  } catch {
-    return null;
-  }
-}
+// backendKind: 'nextcloud' (Default) oder 'standalone' (merlin-server).
 
 async function ensureHostPermission(url) {
   const origin = originPatternFor(url);
@@ -153,6 +108,14 @@ async function startLoginFlow() {
     return;
   }
 
+  // Unverschlüsseltes http:// nur für localhost (lokale Entwicklung). Die
+  // Prüfung ist synchron und kappt daher die User-Geste nicht.
+  if (!isAllowedServerUrl(url)) {
+    showStatus(t('options_httpBlocked'), 'error');
+    $('nextcloudUrl').focus();
+    return;
+  }
+
   const backendKind = selectedBackendKind();
 
   _lfActive = true;
@@ -165,14 +128,6 @@ async function startLoginFlow() {
     _lfReset();
     showStatus(t('options_needsPermission'), 'error');
     return;
-  }
-
-  // Nicht blockierend: Basic-Auth-Zugangsdaten würden über http:// im Klartext
-  // übertragen — kurz warnen, aber den Login-Flow trotzdem fortsetzen (der
-  // Nutzer hat die URL bewusst so eingegeben, z. B. für einen lokalen Server).
-  if (url.startsWith('http://')) {
-    showStatus(t('options_httpWarning'), 'error', 4000);
-    await sleep(1500);
   }
 
   showStatus(t('options_connecting'), 'info', 0);
@@ -190,15 +145,26 @@ async function startLoginFlow() {
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    loginUrl     = d.login;
-    pollToken    = d.poll.token;
-    pollEndpoint = d.poll.endpoint;
+    loginUrl     = d?.login;
+    pollToken    = d?.poll?.token;
+    pollEndpoint = d?.poll?.endpoint;
   } catch (e) {
     _lfReset();
     showStatus(t('options_cannotReach', [e.message]), 'error');
     return;
   }
   if (!_lfActive) return;
+
+  // Antwort prüfen: Login-Seite nur verschlüsselt (bzw. localhost), und das
+  // Poll-Token darf nur an den eingegebenen Server zurückgehen — die Poll-
+  // Antwort enthält das neue App-Passwort.
+  if (typeof pollToken !== 'string' || !pollToken
+      || !isAllowedServerUrl(loginUrl)
+      || !isAllowedServerUrl(pollEndpoint) || !sameOrigin(pollEndpoint, url)) {
+    _lfReset();
+    showStatus(t('options_loginInvalidResponse'), 'error');
+    return;
+  }
 
   // ── Step 2: open login tab ───────────────────────────────────────────────────
   let loginTabId = null;
@@ -277,7 +243,10 @@ async function loadSettings() {
 
   // Restore in-progress UI state if the background is still polling
   const { _merlinLoginFlow } = await browser.storage.local.get('_merlinLoginFlow');
-  if (_merlinLoginFlow?.active) {
+  // Ein abgelaufener Flow (z. B. weil Firefox die Hintergrundseite beendet
+  // hat) zählt nicht mehr als aktiv; das Hintergrundskript räumt ihn beim
+  // nächsten Alarm selbst auf.
+  if (_merlinLoginFlow?.active && Date.now() <= (_merlinLoginFlow.deadline ?? 0)) {
     _lfActive = true;
     $('loginFlowBtn').querySelector('span').textContent = t('options_cancelLogin');
     showStatus(t('options_completeLogin'), 'info', 0);
@@ -294,9 +263,9 @@ async function saveSettings() {
     return;
   }
 
-  if (url.startsWith('http://')) {
-    showStatus(t('options_httpWarning'), 'error', 4000);
-    await sleep(1500);
+  if (!isAllowedServerUrl(url)) {
+    showStatus(t('options_httpBlocked'), 'error');
+    return;
   }
 
   try {
