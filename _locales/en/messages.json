@@ -365,6 +365,9 @@
   "saveDialog_noCredentials": {
     "message": "No credentials available"
   },
+  "saveDialog_noMatchingTags": {
+    "message": "No matching tags"
+  },
   "saveDialog_noTags": {
     "message": "No tags yet"
   },
