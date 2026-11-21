@@ -1,5 +1,7 @@
 # Merlin for Firefox
 
+[![Merlin – Get the extension](store/get-extension-en.svg)](https://reviewers.addons.thunderbird.net/en-CA/thunderbird/addon/merlin/)
+
 A Firefox extension for saving links and pages to Merlin, a
 cross-platform read-it-later app backed by either a Nextcloud instance
 ([`merlin-nextcloud`](https://github.com/Dexxes/merlin-nextcloud/)) or an independent standalone
