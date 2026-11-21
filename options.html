@@ -230,7 +230,7 @@
 
     <!-- Header -->
     <div class="header">
-      <img src="icons/icon-128.png" alt="Merlin icon">
+      <img src="icons/icon-128.png" alt="">
       <div class="header-text">
         <h1>Merlin</h1>
       </div>
@@ -240,17 +240,17 @@
     <div class="backend-toggle">
       <label>
         <input type="radio" name="backendKind" id="backendKindNextcloud" value="nextcloud" checked>
-        <span>Nextcloud</span>
+        <span data-i18n="options_backendNextcloud">Nextcloud</span>
       </label>
       <label>
         <input type="radio" name="backendKind" id="backendKindStandalone" value="standalone">
-        <span>Standalone-Server</span>
+        <span data-i18n="options_backendStandalone">Standalone server</span>
       </label>
     </div>
 
     <!-- Nextcloud URL -->
     <div class="field">
-      <label for="nextcloudUrl" data-i18n="options_urlLabel">Nextcloud URL</label>
+      <label for="nextcloudUrl" data-i18n="options_urlLabel">URL to your Merlin instance</label>
       <input
         type="url"
         id="nextcloudUrl"
@@ -258,7 +258,7 @@
         data-i18n-placeholder="options_urlPlaceholderFull"
         autocomplete="off"
         spellcheck="false">
-      <p class="hint" data-i18n="options_urlHintShort">The base URL of your Nextcloud instance (no trailing slash needed)</p>
+      <p class="hint" data-i18n="options_urlHint">The base URL of your Merlin instance - either a Nextcloud or a standalone server</p>
     </div>
 
     <!-- Nextcloud Login Flow -->

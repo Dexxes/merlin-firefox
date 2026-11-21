@@ -119,6 +119,12 @@
       }
     }
   },
+  "options_backendNextcloud": {
+    "message": "Nextcloud"
+  },
+  "options_backendStandalone": {
+    "message": "Standalone server"
+  },
   "options_cancelLogin": {
     "message": "Cancel login…"
   },
@@ -200,6 +206,9 @@
   },
   "options_loggedOutWelcome": {
     "message": "Logged out. Enter your URL and click \"Login with Nextcloud\" to get started."
+  },
+  "options_loggedOutWelcomeStandalone": {
+    "message": "Logged out. Enter your server URL and click \"Log in\" to get started."
   },
   "options_loginButton": {
     "message": "Login with Nextcloud"
@@ -301,8 +310,14 @@
   "options_urlSaved": {
     "message": "URL saved. Use \"Login with Nextcloud\" to authenticate."
   },
+  "options_urlSavedStandalone": {
+    "message": "URL saved. Use \"Log in\" to authenticate."
+  },
   "options_welcome": {
     "message": "Welcome! Enter your URL and click \"Login with Nextcloud\" to get started."
+  },
+  "options_welcomeStandalone": {
+    "message": "Welcome! Enter your server URL and click \"Log in\" to get started."
   },
   "passphrase_activeHint": {
     "message": "Encrypted sync is active."

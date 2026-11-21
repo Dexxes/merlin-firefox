@@ -16,6 +16,10 @@
 function localizePage() {
   const msg = (key) => browser.i18n.getMessage(key);
 
+  // Match the document language to the UI language actually used, so screen
+  // readers and hyphenation pick the right language.
+  document.documentElement.lang = browser.i18n.getUILanguage();
+
   document.querySelectorAll('[data-i18n]').forEach((el) => {
     const text = msg(el.dataset.i18n);
     if (text) el.textContent = text;

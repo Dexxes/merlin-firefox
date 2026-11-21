@@ -82,7 +82,13 @@ function selectedBackendKind() {
 // "Login with Nextcloud" only makes sense for the Nextcloud backend — the
 // standalone server has no Nextcloud account behind it, so it gets a neutral label.
 function loginButtonLabel() {
-  return selectedBackendKind() === 'standalone' ? t('options_loginButtonStandalone') : t('options_loginButton');
+  return backendText('options_loginButton', 'options_loginButtonStandalone');
+}
+
+// Several hints name the "Login with Nextcloud" button; the standalone
+// backend has its own wording with the neutral "Log in" button.
+function backendText(nextcloudKey, standaloneKey) {
+  return t(selectedBackendKind() === 'standalone' ? standaloneKey : nextcloudKey);
 }
 
 function setLoginButtonText(text) {
@@ -143,7 +149,7 @@ async function startLoginFlow() {
     return;
   }
 
-  showStatus(t('options_connecting'), 'info', 0);
+  showStatus(backendText('options_connecting', 'options_connectingShort'), 'info', 0);
 
   // ── Step 1: initiate ────────────────────────────────────────────────────────
   // merlin-server mirrors Nextcloud's Login Flow v2 JSON exactly (see
@@ -237,6 +243,23 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 });
 
+// Keeps a visible welcome hint in line with the selected backend, since it
+// names that backend's login button.
+const WELCOME_KEYS = [
+  ['options_welcome', 'options_welcomeStandalone'],
+  ['options_loggedOutWelcome', 'options_loggedOutWelcomeStandalone'],
+];
+
+function refreshWelcomeText() {
+  const current = $('statusText').textContent;
+  for (const [nextcloudKey, standaloneKey] of WELCOME_KEYS) {
+    if (current === t(nextcloudKey) || current === t(standaloneKey)) {
+      $('statusText').textContent = backendText(nextcloudKey, standaloneKey);
+      return;
+    }
+  }
+}
+
 // ─── Load saved settings ──────────────────────────────────────────────────────
 
 async function loadSettings() {
@@ -249,7 +272,7 @@ async function loadSettings() {
 
   // Show welcome hint when the page is opened and no credentials are stored yet
   if (!nextcloudUrl && !username && !appPassword) {
-    showStatus(t('options_welcome'), 'info', 0);
+    showStatus(backendText('options_welcome', 'options_welcomeStandalone'), 'info', 0);
   }
 
   updateLogoutButton(!!(username && appPassword));
@@ -282,7 +305,7 @@ async function saveSettings() {
 
   try {
     await setCredentials({ nextcloudUrl: url, backendKind: selectedBackendKind() });
-    showStatus(t('options_urlSaved'), 'success', 0);
+    showStatus(backendText('options_urlSaved', 'options_urlSavedStandalone'), 'success', 0);
     showCloseButton();
   } catch (e) {
     showStatus(t('options_couldNotSave', [e.message]), 'error');
@@ -303,7 +326,7 @@ async function logout() {
   // Reset the UI to the "not connected" state of a first start
   $('nextcloudUrl').value = '';
   updateLogoutButton(false);
-  showStatus(t('options_loggedOutWelcome'), 'info', 0);
+  showStatus(backendText('options_loggedOutWelcome', 'options_loggedOutWelcomeStandalone'), 'info', 0);
 }
 
 // ─── Keyboard shortcut: Ctrl/Cmd+S saves ─────────────────────────────────────
@@ -325,6 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $('logoutBtn').addEventListener('click', logout);
 
   document.querySelectorAll('input[name="backendKind"]').forEach(radio => {
-    radio.addEventListener('change', updateLoginButtonLabel);
+    radio.addEventListener('change', () => {
+      updateLoginButtonLabel();
+      refreshWelcomeText();
+    });
   });
 });
